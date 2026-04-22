@@ -1,0 +1,146 @@
+# Regime Parameters Configuration
+# Four regime modes based on 2x2 matrix: (trend_direction) x (volatility_env)
+#
+# Regime detection input:
+#   trend_score   > 55 → 'up',  < 40 → 'down',  else → 'sideways'
+#   volatility_score > 60 → 'high', else → 'low'
+#
+# Base regime map:
+#   (up, low)       → offense
+#   (up, high)      → cautious_offense
+#   (sideways, low) → cautious_offense
+#   (sideways, high)→ defense
+#   (down, low)     → defense
+#   (down, high)    → risk_off
+#
+# Corrections:
+#   breadth_score < 30 AND mode == offense → cautious_offense
+#   liquidity_score > 70 AND mode == defense → cautious_offense
+
+# ============================================================
+# Regime Score Thresholds
+# ============================================================
+thresholds:
+  trend:
+    up: 55          # trend_score > 55 → uptrend
+    down: 40        # trend_score < 40 → downtrend
+  volatility:
+    high: 60        # volatility_score > 60 → high-vol environment
+  corrections:
+    breadth_weak: 30        # breadth < 30 → downgrade offense → cautious_offense
+    liquidity_strong: 70    # liquidity > 70 → upgrade defense → cautious_offense
+
+# ============================================================
+# Base Regime Map
+# ============================================================
+regime_map:
+  up_low: "offense"
+  up_high: "cautious_offense"
+  sideways_low: "cautious_offense"
+  sideways_high: "defense"
+  down_low: "defense"
+  down_high: "risk_off"
+
+# ============================================================
+# Per-Regime Parameters
+# ============================================================
+params:
+
+  # 进攻模式：趋势向上 + 低波动
+  offense:
+    description: "趋势向上，低波动，积极做多"
+    dimension_weights:
+      technical: 0.40
+      fundamental: 0.25
+      flow: 0.20
+      sentiment: 0.15
+    max_position_pct: 0.15         # 单只股最大仓位
+    max_total_position_pct: 0.80   # 总仓位上限
+    confidence_factor: 1.0
+    min_confidence_to_enter: 0.50
+    stop_loss_atr_mult: 2.0
+    target_atr_mult: 4.0
+
+  # 谨慎进攻：趋势向上但波动高，或横盘低波动
+  cautious_offense:
+    description: "条件尚可，谨慎布局，控制仓位"
+    dimension_weights:
+      technical: 0.40
+      fundamental: 0.30
+      flow: 0.20
+      sentiment: 0.10
+    max_position_pct: 0.12
+    max_total_position_pct: 0.60
+    confidence_factor: 0.85
+    min_confidence_to_enter: 0.55
+    stop_loss_atr_mult: 1.5
+    target_atr_mult: 3.0
+
+  # 防守模式：下跌趋势或高波动
+  defense:
+    description: "市场走弱，以防守为主，降低仓位"
+    dimension_weights:
+      technical: 0.35
+      fundamental: 0.35
+      flow: 0.20
+      sentiment: 0.10
+    max_position_pct: 0.08
+    max_total_position_pct: 0.40
+    confidence_factor: 0.70
+    min_confidence_to_enter: 0.65
+    stop_loss_atr_mult: 1.5
+    target_atr_mult: 2.5
+
+  # 风险规避：下跌 + 高波动，极端恶劣
+  risk_off:
+    description: "市场极端恶化，尽量空仓或极少持仓"
+    dimension_weights:
+      technical: 0.30
+      fundamental: 0.35
+      flow: 0.25
+      sentiment: 0.10
+    max_position_pct: 0.05
+    max_total_position_pct: 0.20
+    confidence_factor: 0.50
+    min_confidence_to_enter: 0.75
+    stop_loss_atr_mult: 1.0
+    target_atr_mult: 2.0
+
+# ============================================================
+# Regime Detection Sub-scores
+# ============================================================
+
+trend_scoring:
+  # Trend score (0-100) based on index MA alignment and direction
+  ma_periods: [20, 60, 150, 200]
+  index_cn: "HS300"
+  index_us: "SPY"
+  # Weights for each component
+  ma_alignment_weight: 0.40    # 均线排列
+  price_position_weight: 0.30  # 价格相对 MA150 位置
+  momentum_weight: 0.30        # 近期涨跌幅（20 日）
+
+volatility_scoring:
+  # Volatility score (0-100): higher = more volatile
+  hv_period: 20                # 历史波动率计算窗口
+  # Thresholds (annualized)
+  hv_low: 0.12                 # HV < 12% → 低波动（score → 0）
+  hv_high: 0.30                # HV > 30% → 高波动（score → 100）
+  vix_thresholds:              # 美股 VIX
+    very_low: 12
+    low: 15
+    neutral: 20
+    high: 25
+    extreme: 30
+
+breadth_scoring:
+  # Breadth score (0-100): higher = broader market participation
+  ad_ratio_weight: 0.40        # 涨跌家数比
+  limit_ratio_weight: 0.30     # 涨停/跌停比
+  new_high_low_weight: 0.30    # 创新高/新低比
+
+liquidity_scoring:
+  # Liquidity score (0-100): higher = more liquidity in market
+  northbound_weight: 0.40      # 北向资金净流入趋势
+  margin_weight: 0.35          # 融资余额变化趋势
+  volume_weight: 0.25          # 市场成交量趋势（相对 20 日均值）

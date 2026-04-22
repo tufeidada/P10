@@ -1,0 +1,45 @@
+# 敏感配置
+.env
+.env.*
+!env.template
+
+# 日志
+logs/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.egg
+
+# 数据库备份（含敏感数据）
+backup/
+
+# 前端构建产物
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.next/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 运行时文件
+*.pid
+nohup.out
+reports/

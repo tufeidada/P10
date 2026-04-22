@@ -1,0 +1,55 @@
+# Regime 参数集
+# 四种市场环境模式下的参数配置
+
+# 趋势/波动率判定阈值
+thresholds:
+  trend_up: 55          # trend_score > 55 → up
+  trend_down: 40        # trend_score < 40 → down
+  volatility_high: 60   # volatility_score > 60 → high
+
+# Regime 参数
+regimes:
+  offense:
+    label: 进攻模式
+    signal_threshold_adj: 1.0
+    max_position_pct: 0.80
+    weights:
+      technical: 0.35
+      fundamental: 0.30
+      flow: 0.20
+      sentiment: 0.15
+
+  cautious_offense:
+    label: 谨慎进攻
+    signal_threshold_adj: 0.9
+    max_position_pct: 0.60
+    weights:
+      technical: 0.30
+      fundamental: 0.35
+      flow: 0.20
+      sentiment: 0.15
+
+  defense:
+    label: 防守模式
+    signal_threshold_adj: 0.8
+    max_position_pct: 0.40
+    weights:
+      technical: 0.25
+      fundamental: 0.35
+      flow: 0.25
+      sentiment: 0.15
+
+  risk_off:
+    label: 避险模式
+    signal_threshold_adj: 0.7
+    max_position_pct: 0.20
+    weights:
+      technical: 0.20
+      fundamental: 0.30
+      flow: 0.30
+      sentiment: 0.20
+
+# 修正规则
+corrections:
+  breadth_low_downgrade: 30   # breadth < 30 且 offense → cautious_offense
+  liquidity_high_upgrade: 70  # liquidity > 70 且 defense → cautious_offense

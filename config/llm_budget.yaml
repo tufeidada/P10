@@ -1,0 +1,16 @@
+# LLM 成本控制配置
+# 超过日预算 → InvariantViolation + Telegram critical
+
+daily_budget_cny: 100.0
+
+# 每千 token 成本（单位：人民币元）
+cost_per_1k_tokens:
+  deepseek:
+    input: 0.001
+    output: 0.002
+  doubao:
+    input: 0.001
+    output: 0.002
+  qwen:
+    input: 0.0006
+    output: 0.0006

@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  db:
+    image: timescale/timescaledb:latest-pg15
+    container_name: alpharadar-db
+    environment:
+      POSTGRES_DB: alpharadar
+      POSTGRES_USER: radar
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-alpharadar2026}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    ports:
+      - "5433:5432"
+    command: >
+      postgres
+        -c shared_preload_libraries='timescaledb'
+        -c max_connections=100
+        -c shared_buffers=2GB
+        -c work_mem=256MB
+        -c maintenance_work_mem=512MB
+        -c effective_cache_size=6GB
+        -c random_page_cost=1.1
+        -c checkpoint_completion_target=0.9
+        -c wal_buffers=64MB
+        -c default_statistics_target=100
+        -c log_min_duration_statement=1000
+        -c timezone='Asia/Shanghai'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U radar -d alpharadar"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    driver: local

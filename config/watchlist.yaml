@@ -1,0 +1,7 @@
+# 本文件仅用于首次 bootstrap seed，主项目运行时从 stock_universe 表读取。
+# 修改 watchlist 请通过：
+#   1. 编辑 inputs/watchlist_seed.csv 然后跑 scripts/load_watchlist.py
+#   2. 或通过 Telegram /watchlist add SYMBOL 命令
+
+source: stock_universe_table
+seed_csv: inputs/watchlist_seed.csv

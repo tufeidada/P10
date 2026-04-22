@@ -1,0 +1,50 @@
+# P0-Core 数据表元数据
+trade_calendar:
+  source: tushare
+  api: trade_cal
+  schema: raw
+  primary_key: [exchange, cal_date]
+  update_frequency: yearly
+
+security_master:
+  source: tushare
+  api: stock_basic + index_classify
+  schema: raw
+  primary_key: [ts_code]
+  update_frequency: weekly
+
+daily_price:
+  source: tushare
+  api: daily
+  schema: raw
+  primary_key: [ts_code, trade_date]
+  update_frequency: daily
+  update_sla: "17:30 CST"
+  completeness_threshold: 0.98
+  fields:
+    ts_code: { type: VARCHAR(20), desc: "股票代码" }
+    trade_date: { type: DATE, desc: "交易日期" }
+    open: { type: "DECIMAL(12,4)", desc: "开盘价（未复权）" }
+    high: { type: "DECIMAL(12,4)", desc: "最高价（未复权）" }
+    low: { type: "DECIMAL(12,4)", desc: "最低价（未复权）" }
+    close: { type: "DECIMAL(12,4)", desc: "收盘价（未复权）" }
+    pre_close: { type: "DECIMAL(12,4)", desc: "昨收价" }
+    change: { type: "DECIMAL(12,4)", desc: "涨跌额" }
+    pct_chg: { type: "DECIMAL(12,4)", desc: "涨跌幅(%)" }
+    volume: { type: BIGINT, source_field: vol, desc: "成交量（手）" }
+    amount: { type: "DECIMAL(20,4)", desc: "成交额（千元）" }
+
+adj_factor:
+  source: tushare
+  api: adj_factor
+  schema: raw
+  primary_key: [ts_code, trade_date]
+  update_frequency: daily
+
+daily_basic:
+  source: tushare
+  api: daily_basic
+  schema: raw
+  primary_key: [ts_code, trade_date]
+  update_frequency: daily
+  update_sla: "17:30 CST"

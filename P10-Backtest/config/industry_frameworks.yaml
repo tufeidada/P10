@@ -1,0 +1,190 @@
+# Industry Scoring Frameworks
+# Each framework defines dimension weights for fundamental analysis.
+# Weights must sum to 1.0 per framework.
+#
+# Dimensions:
+#   profitability: ROE quality, gross margin stability, OCF/NP ratio
+#   growth:        revenue YoY, net profit YoY, growth trend
+#   valuation:     PE/PB vs history and peers (lower = cheaper = higher score)
+#   health:        debt ratio, current ratio, goodwill/net assets
+
+# ============================================================
+# Industry → Framework Mapping
+# ============================================================
+# Used by fundamental analyzer to pick the right scoring weights.
+# industry_classify.industry_framework references these keys.
+
+industry_to_framework:
+  # A-share (申万一级)
+  "半导体": "technology"
+  "电子": "technology"
+  "计算机": "technology"
+  "通信": "technology"
+  "电力设备": "technology"       # 光伏/储能偏成长科技
+  "国防军工": "technology"
+  "机械设备": "industrials"
+  "化工": "materials"
+  "新材料": "materials"
+  "有色金属": "materials"
+  "煤炭": "energy"
+  "石油石化": "energy"
+  "医药生物": "healthcare"
+  "食品饮料": "consumer_staples"
+  "农林牧渔": "consumer_staples"
+  "家用电器": "consumer_discretionary"
+  "汽车": "automotive"
+  "纺织服饰": "consumer_discretionary"
+  "社会服务": "consumer_discretionary"
+  "商贸零售": "consumer_discretionary"
+  "传媒": "communication_services"
+  "非银金融": "financials"
+  "银行": "financials"
+  "房地产": "real_estate"
+  "建筑材料": "materials"
+  "建筑装饰": "industrials"
+  "交通运输": "industrials"
+  "公用事业": "utilities"
+  "钢铁": "materials"
+  "轻工制造": "industrials"
+  "综合": "default"
+
+  # US industry tags
+  "technology": "technology"
+  "healthcare": "healthcare"
+  "financials": "financials"
+  "energy": "energy"
+  "consumer_staples": "consumer_staples"
+  "consumer_discretionary": "consumer_discretionary"
+  "communication_services": "communication_services"
+  "industrials": "industrials"
+  "materials": "materials"
+  "real_estate": "real_estate"
+  "utilities": "utilities"
+  "automotive": "automotive"
+
+# ============================================================
+# Scoring Frameworks (dimension weights)
+# ============================================================
+
+frameworks:
+
+  # 科技 / 半导体 / 军工
+  technology:
+    profitability: 0.25
+    growth: 0.45           # 成长性最重要
+    valuation: 0.20
+    health: 0.10
+    notes: "高成长为王，估值可相对宽容，研发支出高导致 margin 低属正常"
+
+  # 医疗健康 / 生物医药
+  healthcare:
+    profitability: 0.30
+    growth: 0.35
+    valuation: 0.20
+    health: 0.15
+    notes: "研发管线和增长重要，但需关注财务健康度（研发烧钱）"
+
+  # 金融（非银、银行）
+  financials:
+    profitability: 0.40    # ROE 是核心指标
+    growth: 0.20
+    valuation: 0.25
+    health: 0.15
+    notes: "ROE 和 PB 是关键；高杠杆是行业常态，health 权重降低"
+
+  # 能源（煤炭、石油）
+  energy:
+    profitability: 0.35
+    growth: 0.15           # 成长性受大宗商品价格主导，参考价值低
+    valuation: 0.30        # 低估值是能源股的重要特征
+    health: 0.20
+    notes: "周期性行业，盈利质量和估值更重要；成长性依赖商品价格"
+
+  # 消费必选（食品饮料、农业）
+  consumer_staples:
+    profitability: 0.40    # 稳定的盈利质量是核心
+    growth: 0.25
+    valuation: 0.25
+    health: 0.10
+    notes: "高毛利率和稳定 ROE 是优质消费必选的标志"
+
+  # 消费可选（汽车零部件、零售）
+  consumer_discretionary:
+    profitability: 0.30
+    growth: 0.30
+    valuation: 0.25
+    health: 0.15
+
+  # 汽车整车 / 新能源车
+  automotive:
+    profitability: 0.25
+    growth: 0.40           # 新能源转型，成长性是核心逻辑
+    valuation: 0.20
+    health: 0.15
+
+  # 通信服务 / 传媒
+  communication_services:
+    profitability: 0.30
+    growth: 0.30
+    valuation: 0.25
+    health: 0.15
+
+  # 工业 / 机械
+  industrials:
+    profitability: 0.35
+    growth: 0.25
+    valuation: 0.25
+    health: 0.15
+
+  # 原材料 / 化工 / 有色
+  materials:
+    profitability: 0.30
+    growth: 0.20
+    valuation: 0.30
+    health: 0.20
+    notes: "周期性较强，估值和财务健康度更重要"
+
+  # 公用事业
+  utilities:
+    profitability: 0.35
+    growth: 0.15
+    valuation: 0.30
+    health: 0.20
+    notes: "稳定性优先，成长性不是核心"
+
+  # 房地产
+  real_estate:
+    profitability: 0.25
+    growth: 0.20
+    valuation: 0.25
+    health: 0.30           # 资产负债率极其重要
+    notes: "财务健康度权重最高，高杠杆是最大风险"
+
+  # 默认（兜底框架）
+  default:
+    profitability: 0.30
+    growth: 0.30
+    valuation: 0.25
+    health: 0.15
+
+# ============================================================
+# Scoring Helper Thresholds
+# ============================================================
+
+profitability_thresholds:
+  roe_excellent: 25.0    # ROE >= 25% → 接近满分
+  roe_good: 15.0         # ROE >= 15% → 良好
+  roe_ok: 8.0            # ROE >= 8% → 及格
+  ocf_np_excellent: 1.25 # OCF/NP >= 1.25 → 现金流质量优秀
+
+growth_thresholds:
+  revenue_yoy_center: 15.0   # 营收增速 15% ≈ 50 分
+  np_yoy_center: 20.0        # 净利润增速 20% ≈ 50 分
+
+valuation_thresholds:
+  pe_history_years: 3   # 自身 PE 历史比较区间（年）
+
+health_thresholds:
+  debt_ratio_max: 66.0      # 资产负债率 66% → 0 分（满载）
+  current_ratio_full: 2.5   # 流动比率 2.5 → 满分
+  goodwill_ratio_max: 0.50  # 商誉/净资产 50% → 0 分

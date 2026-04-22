@@ -1,0 +1,111 @@
+# P10-Backtest Main Configuration
+# Sensitive values (tokens, passwords) are loaded from .env
+
+# ============================================================
+# Backtest Parameters
+# ============================================================
+backtest:
+  start_date: "2025-09-01"        # 回测开始日期
+  end_date: "2026-04-17"          # 回测结束日期（约 7.5 个月）
+  initial_cash_cn: 1000000        # A 股初始资金（人民币）
+  initial_cash_us: 100000         # 美股初始资金（美元）
+
+# ============================================================
+# Data Fetch Range
+# ============================================================
+data:
+  fetch_start_date: "2024-06-01"  # 比回测开始前置 3 个月，用于计算 MA150/200 等长周期指标
+  fetch_end_date: "2026-04-17"
+
+  # Indexes to track for regime and benchmarks
+  indexes:
+    CN:
+      - index_code: "000300.SH"
+        alias: "HS300"
+      - index_code: "000852.SH"
+        alias: "ZZ1000"
+      - index_code: "000001.SH"
+        alias: "SH"
+    US:
+      - index_code: "SPY"
+        alias: "SPY"
+      - index_code: "QQQ"
+        alias: "QQQ"
+      - index_code: "^VIX"
+        alias: "VIX"
+
+# ============================================================
+# Trading Cost Simulation
+# ============================================================
+execution:
+  # A 股
+  cn_commission_rate: 0.002       # 双边 0.2%（买 + 卖各一次）
+  cn_stamp_duty: 0.001            # 印花税（单向，卖出时）
+  cn_min_lot: 100                 # 最小交易单位（手 = 100 股）
+  cn_slippage_pct: 0.001          # 滑点 0.1%
+
+  # 美股
+  us_commission_rate: 0.001       # 双边 0.1%
+  us_min_lot: 1
+  us_slippage_pct: 0.0005         # 滑点 0.05%
+
+# ============================================================
+# Position Management
+# ============================================================
+position:
+  max_single_position_pct: 0.15   # 单只股票最大仓位（在 regime 覆盖之前的默认值）
+  max_industry_concentration: 0.40 # 单行业最大仓位占比
+  min_confidence_to_enter: 0.50   # 建仓最低 confidence
+  exit_bearish_confidence: 0.50   # bearish + confidence > 此值时平仓
+  max_hold_days_neutral: 30       # 非看多持仓超过 30 天自动平仓
+
+# ============================================================
+# Analysis Timeframes
+# ============================================================
+analysis:
+  technical:
+    daily_weight: 0.40            # 日线权重
+    weekly_weight: 0.60           # 周线权重（更重要）
+    rs_rank_period: 63            # RS Rank 计算周期（交易日）
+    lookback_bars: 250            # 最大回看 K 线数
+
+  fundamental:
+    n_quarters: 12                # 财报回看季度数
+
+  regime:
+    lookback_days: 60             # Regime 判断回看天数
+
+# ============================================================
+# Composite Score Thresholds
+# ============================================================
+signals:
+  bullish_threshold: 65           # composite_score > 65 → bullish
+  bearish_threshold: 40           # composite_score < 40 → bearish
+
+# ============================================================
+# Risk Management
+# ============================================================
+risk:
+  atr_stop_loss_multiplier: 2.0   # 止损: 入场价 - 2 * ATR
+  atr_target_multiplier: 4.0      # 目标: 入场价 + 4 * ATR（盈亏比 2:1）
+  max_risk_per_trade_pct: 0.02    # 单笔最大亏损 2% 总资产
+
+# ============================================================
+# Data Quality
+# ============================================================
+data_quality:
+  max_fetch_retries: 3            # 单只票最大重试次数
+  fetch_timeout_seconds: 900      # 拉取超时（超时标注状态，不崩溃）
+  min_bars_required: 60           # 最少需要的 K 线数才能参与回测
+
+# ============================================================
+# Logging
+# ============================================================
+logging:
+  level: "INFO"
+  format: "json"
+  include_fields:
+    - symbol
+    - market
+    - module
+    - trade_date

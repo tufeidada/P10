@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "p10-backtest"
+version = "0.1.0"
+description = "P10-AlphaRadar 前置回测验证系统"
+requires-python = ">=3.11"
+dependencies = [
+    "asyncpg>=0.29.0",
+    "pandas>=2.1.0",
+    "numpy>=1.26.0",
+    "scipy>=1.11.0",
+    "pandas-ta>=0.3.14b",
+    "tushare>=1.4.19",
+    "akshare>=1.12.0",
+    "yfinance>=0.2.48",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "pyyaml>=6.0.1",
+    "python-dotenv>=1.0.0",
+    "structlog>=24.1.0",
+    "matplotlib>=3.8.0",
+    "plotly>=5.18.0",
+    "openpyxl>=3.1.2",
+    "python-dateutil>=2.8.2",
+    "pytz>=2024.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.3.0",
+    "mypy>=1.8.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["db*", "data*", "core*", "backtest*", "evaluation*", "scripts*"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

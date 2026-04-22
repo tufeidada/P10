@@ -1,0 +1,46 @@
+thresholds:
+  trend_up: 55
+  trend_down: 40
+  volatility_high: 60
+
+corrections:
+  breadth_low_downgrade: 30
+  liquidity_high_upgrade: 70
+
+regimes:
+  offense:
+    label: 进攻模式
+    max_position_pct: 0.80
+    signal_threshold_adj: 1.0
+    weights:
+      technical: 0.30
+      fundamental: 0.25
+      flow: 0.25
+      sentiment: 0.20
+  cautious_offense:
+    label: 谨慎进攻
+    max_position_pct: 0.60
+    signal_threshold_adj: 0.90
+    weights:
+      technical: 0.25
+      fundamental: 0.30
+      flow: 0.25
+      sentiment: 0.20
+  defense:
+    label: 防守模式
+    max_position_pct: 0.40
+    signal_threshold_adj: 0.80
+    weights:
+      technical: 0.20
+      fundamental: 0.35
+      flow: 0.25
+      sentiment: 0.20
+  risk_off:
+    label: 避险模式
+    max_position_pct: 0.20
+    signal_threshold_adj: 0.70
+    weights:
+      technical: 0.20
+      fundamental: 0.40
+      flow: 0.25
+      sentiment: 0.15

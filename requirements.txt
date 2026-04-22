@@ -1,0 +1,58 @@
+# P10-AlphaRadar Dependencies
+
+# === Database ===
+asyncpg>=0.29.0
+psycopg2-binary>=2.9.9        # migrate_from_p6.py 使用 sync driver
+
+# === Web Framework ===
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+
+# === Data Processing ===
+pandas>=2.2.0
+numpy>=1.26.0
+# ta-lib                       # 需先安装 C 库: brew install ta-lib
+
+# === Data Sources ===
+tushare>=1.4.0
+akshare>=1.14.0
+yfinance>=0.2.40
+# pytdx                        # A股盘中实时（Phase 3）
+duckdb>=1.0.0                  # P6+迁移读取用
+
+# === Scheduling ===
+apscheduler>=3.10.0
+
+# === Telegram ===
+python-telegram-bot>=20.0
+
+# === LLM ===
+openai>=1.40.0                 # DeepSeek/Qwen 兼容 OpenAI 格式
+httpx>=0.27.0
+
+# === Configuration ===
+pydantic>=2.9.0
+pydantic-settings>=2.5.0
+pyyaml>=6.0
+
+# === Logging ===
+structlog>=24.4.0
+
+# === Utilities ===
+python-dotenv>=1.0.0
+click>=8.1.0
+
+# === Dev / Testing ===
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
+ruff>=0.7.0
+mypy>=1.12.0
+
+# === Backtest 子模块新增依赖 ===
+scipy>=1.11.0
+pandas-ta>=0.3.14b
+matplotlib>=3.8.0
+plotly>=5.18.0
+openpyxl>=3.1.2
+kaleido>=0.2.1
+python-dotenv>=1.0.0

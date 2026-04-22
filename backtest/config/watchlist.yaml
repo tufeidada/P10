@@ -1,0 +1,270 @@
+# P10-Backtest 候选池配置
+# A股 32只 + 美股 29只
+
+watchlist:
+  CN:
+    # ===== 新材料 =====
+    - symbol: "603683.SH"
+      name: "晶华新材"
+      industry: "新材料"
+
+    - symbol: "300821.SZ"
+      name: "东岳硅材"
+      industry: "化工"
+
+    - symbol: "300196.SZ"
+      name: "长海股份"
+      industry: "化工"
+
+    # ===== 化工 =====
+    - symbol: "000510.SZ"
+      name: "新金路"
+      industry: "化工"
+
+    - symbol: "000818.SZ"
+      name: "金牛化工"
+      industry: "化工"
+
+    - symbol: "600160.SH"
+      name: "巨化股份"
+      industry: "化工"
+
+    # ===== 有色金属 =====
+    - symbol: "002378.SZ"
+      name: "章源钨业"
+      industry: "有色金属"
+
+    - symbol: "000962.SZ"
+      name: "东方钽业"
+      industry: "有色金属"
+
+    - symbol: "000960.SZ"
+      name: "锡业股份"
+      industry: "有色金属"
+
+    - symbol: "000657.SZ"
+      name: "中钨高新"
+      industry: "有色金属"
+
+    - symbol: "600392.SH"
+      name: "盛和资源"
+      industry: "有色金属"
+
+    # ===== 半导体 =====
+    - symbol: "688766.SH"
+      name: "普冉股份"
+      industry: "半导体"
+
+    - symbol: "603986.SH"
+      name: "兆易创新"
+      industry: "半导体"
+
+    - symbol: "603893.SH"
+      name: "瑞芯微"
+      industry: "半导体"
+
+    # ===== 电力设备 / 光伏 =====
+    - symbol: "688726.SH"
+      name: "拉普拉斯"
+      industry: "电力设备"
+
+    - symbol: "688353.SH"
+      name: "华盛锂电"      # 用户原写"华生锂电"，正式名为华盛锂电
+      industry: "电力设备"
+
+    - symbol: "688599.SH"
+      name: "天合光能"
+      industry: "电力设备"
+
+    - symbol: "688032.SH"
+      name: "禾迈股份"
+      industry: "电力设备"
+
+    # ===== 机械设备 =====
+    - symbol: "002050.SZ"
+      name: "三花智控"
+      industry: "机械设备"
+
+    - symbol: "300757.SZ"
+      name: "罗博特科"
+      industry: "机械设备"
+
+    - symbol: "300818.SZ"
+      name: "耐普矿机"
+      industry: "机械设备"
+
+    # ===== 通信 =====
+    - symbol: "300502.SZ"
+      name: "新易盛"
+      industry: "通信"
+
+    - symbol: "000063.SZ"
+      name: "中兴通讯"
+      industry: "通信"
+
+    - symbol: "300002.SZ"
+      name: "神州泰岳"
+      industry: "计算机"
+
+    # ===== 国防军工 =====
+    - symbol: "688543.SH"
+      name: "国科军工"
+      industry: "国防军工"
+
+    - symbol: "600590.SH"
+      name: "泰豪科技"
+      industry: "国防军工"
+
+    # ===== 医药 =====
+    - symbol: "603716.SH"
+      name: "塞力医疗"      # 用户原写"赛力医疗"，正式名为塞力医疗
+      industry: "医药生物"
+
+    # ===== 电子 =====
+    - symbol: "002426.SZ"
+      name: "胜利精密"
+      industry: "电子"
+
+    - symbol: "601138.SH"
+      name: "工业富联"
+      industry: "电子"
+
+    # ===== 能源 =====
+    - symbol: "600575.SH"
+      name: "淮河能源"
+      industry: "煤炭"
+
+    # ===== 供应链 / 化工新能源 =====
+    - symbol: "002091.SZ"
+      name: "国泰集团"      # 上市简称：江苏国泰
+      industry: "化工"
+
+    # ===== 金融 =====
+    - symbol: "601318.SH"
+      name: "中国平安"
+      industry: "非银金融"
+
+  US:
+    # ===== 科技巨头 =====
+    - symbol: "NVDA"
+      name: "NVIDIA"
+      industry: "technology"
+
+    - symbol: "AAPL"
+      name: "Apple"
+      industry: "technology"
+
+    - symbol: "MSFT"
+      name: "Microsoft"
+      industry: "technology"
+
+    - symbol: "GOOGL"
+      name: "Alphabet"
+      industry: "technology"
+
+    # ===== 科技成长 =====
+    - symbol: "TSLA"
+      name: "Tesla"
+      industry: "automotive"
+
+    - symbol: "NFLX"
+      name: "Netflix"
+      industry: "communication_services"
+
+    - symbol: "ADBE"
+      name: "Adobe"
+      industry: "technology"
+
+    - symbol: "ZM"
+      name: "Zoom"
+      industry: "technology"
+
+    - symbol: "DUOL"
+      name: "Duolingo"
+      industry: "technology"
+
+    - symbol: "MSTR"
+      name: "MicroStrategy"
+      industry: "technology"
+
+    # ===== 半导体 =====
+    - symbol: "MU"
+      name: "Micron Technology"
+      industry: "technology"
+
+    - symbol: "INTC"
+      name: "Intel"
+      industry: "technology"
+
+    - symbol: "AAOI"
+      name: "Applied Optoelectronics"
+      industry: "technology"
+
+    # ===== 医疗健康 =====
+    - symbol: "UNH"
+      name: "UnitedHealth Group"
+      industry: "healthcare"
+
+    - symbol: "SMMT"
+      name: "Summit Therapeutics"
+      industry: "healthcare"
+
+    - symbol: "HIMS"
+      name: "Hims & Hers Health"
+      industry: "healthcare"
+
+    # ===== 金融 =====
+    - symbol: "FUTU"
+      name: "Futu Holdings"
+      industry: "financials"
+
+    - symbol: "BX"
+      name: "Blackstone"
+      industry: "financials"
+
+    - symbol: "LMND"
+      name: "Lemonade"
+      industry: "financials"
+
+    # ===== 能源 =====
+    - symbol: "OXY"
+      name: "Occidental Petroleum"
+      industry: "energy"
+
+    # ===== 通信 =====
+    - symbol: "ASTS"
+      name: "AST SpaceMobile"
+      industry: "communication_services"
+
+    # ===== 中概股 =====
+    - symbol: "BABA"
+      name: "Alibaba"
+      industry: "consumer_discretionary"
+
+    - symbol: "JD"
+      name: "JD.com"
+      industry: "consumer_discretionary"
+
+    - symbol: "PDD"
+      name: "PDD Holdings"
+      industry: "consumer_discretionary"
+
+    - symbol: "BIDU"
+      name: "Baidu"
+      industry: "technology"
+
+    - symbol: "NTES"
+      name: "NetEase"
+      industry: "technology"
+
+    - symbol: "TCOM"
+      name: "Trip.com"
+      industry: "consumer_discretionary"
+
+    - symbol: "XPEV"
+      name: "XPeng"
+      industry: "automotive"
+
+    - symbol: "LI"
+      name: "Li Auto"
+      industry: "automotive"

@@ -1,0 +1,58 @@
+# 行业差异化评分框架
+# 不同行业使用不同的四维权重：profitability / growth / valuation / health
+# 权重之和 = 1.0
+
+frameworks:
+  consumer:
+    label: 消费（白酒/食品/家电）
+    sw1_names: [食品饮料, 家用电器, 商贸零售, 纺织服饰, 社会服务, 美容护理, 轻工制造]
+    weights:
+      profitability: 0.35
+      growth: 0.25
+      valuation: 0.25
+      health: 0.15
+
+  technology:
+    label: 科技（半导体/软件/新能源）
+    sw1_names: [电子, 计算机, 通信, 电力设备, 国防军工, 机械设备]
+    weights:
+      profitability: 0.20
+      growth: 0.40
+      valuation: 0.25
+      health: 0.15
+
+  finance:
+    label: 金融（银行/保险/券商）
+    sw1_names: [银行, 非银金融]
+    weights:
+      profitability: 0.30
+      growth: 0.15
+      valuation: 0.30
+      health: 0.25
+
+  cyclical:
+    label: 周期（有色/化工/钢铁/地产）
+    sw1_names: [有色金属, 基础化工, 钢铁, 煤炭, 石油石化, 建筑材料, 建筑装饰, 房地产, 汽车, 交通运输, 农林牧渔]
+    weights:
+      profitability: 0.20
+      growth: 0.20
+      valuation: 0.35
+      health: 0.25
+
+  healthcare:
+    label: 医药生物
+    sw1_names: [医药生物]
+    weights:
+      profitability: 0.25
+      growth: 0.35
+      valuation: 0.25
+      health: 0.15
+
+  default:
+    label: 其他
+    sw1_names: []
+    weights:
+      profitability: 0.30
+      growth: 0.25
+      valuation: 0.25
+      health: 0.20

@@ -1,0 +1,220 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #080b14;
+  color: #e6edf3;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  height: 100vh;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0d1117;
+}
+::-webkit-scrollbar-thumb {
+  background: #21262d;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #30363d;
+}
+
+/* Skeleton shimmer animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #161b22 25%, #21262d 50%, #161b22 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+/* Scanline overlay effect */
+.scanlines::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Glow effects */
+.glow-teal {
+  box-shadow: 0 0 8px rgba(0, 212, 170, 0.3), 0 0 16px rgba(0, 212, 170, 0.1);
+}
+.glow-red {
+  box-shadow: 0 0 8px rgba(248, 81, 73, 0.3), 0 0 16px rgba(248, 81, 73, 0.1);
+}
+.glow-amber {
+  box-shadow: 0 0 8px rgba(227, 179, 65, 0.3), 0 0 16px rgba(227, 179, 65, 0.1);
+}
+
+/* Monospace number utility */
+.mono-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Text selection */
+::selection {
+  background: rgba(0, 212, 170, 0.2);
+  color: #e6edf3;
+}
+
+/* Score pill */
+.score-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+/* Pulse dot */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Table styles */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.data-table th {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8b949e;
+  border-bottom: 1px solid #21262d;
+  padding: 8px 12px;
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.data-table th:hover {
+  color: #e6edf3;
+}
+.data-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid rgba(33, 38, 45, 0.5);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.data-table th {
+  padding: 6px 10px;
+}
+.data-table tr:hover td {
+  background: rgba(22, 27, 34, 0.8);
+}
+
+/* Neon border on active elements */
+.neon-border-teal {
+  border-left: 3px solid #00d4aa;
+  box-shadow: inset 3px 0 8px rgba(0, 212, 170, 0.1);
+}
+
+/* Progress bar */
+.progress-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: #21262d;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Status indicators */
+.status-ok { color: #00d4aa; }
+.status-warning { color: #e3b341; }
+.status-error { color: #f85149; }
+
+/* Card hover */
+.card-hover {
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.card-hover:hover {
+  background-color: #161b22;
+}
+
+/* Regime color borders */
+.regime-offense { border-left-color: #00d4aa !important; }
+.regime-cautious { border-left-color: #e3b341 !important; }
+.regime-defense { border-left-color: #f97316 !important; }
+.regime-risk-off { border-left-color: #f85149 !important; }
+
+/* Chart container */
+.chart-container {
+  position: relative;
+  width: 100%;
+}
+
+/* Mini sparkline */
+.mini-score-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: #21262d;
+}
+
+/* Confidence bar gradient */
+.confidence-gradient {
+  background: linear-gradient(90deg, #f85149 0%, #e3b341 50%, #00d4aa 100%);
+}
+
+/* Markdown content rendered from LLM narrative */
+.markdown-content { font-size: 12px; line-height: 1.65; color: #e6edf3; }
+.markdown-content p { margin: 0 0 6px 0; }
+.markdown-content p:last-child { margin-bottom: 0; }
+.markdown-content strong { color: #e6edf3; font-weight: 600; }
+.markdown-content em { color: #c3ccd6; font-style: italic; }
+.markdown-content ul, .markdown-content ol { margin: 4px 0 6px 0; padding-left: 16px; }
+.markdown-content li { margin: 2px 0; }
+.markdown-content h2, .markdown-content h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #8b949e; margin: 8px 0 4px 0; }
+.markdown-content code { font-family: 'JetBrains Mono', monospace; font-size: 11px; background: #21262d; padding: 1px 4px; border-radius: 3px; color: #00d4aa; }
+.markdown-content hr { border: none; border-top: 1px solid #21262d; margin: 8px 0; }

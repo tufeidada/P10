@@ -1,0 +1,37 @@
+# P10-Backtest Dependencies
+# Python 3.11+
+
+# Database
+asyncpg>=0.29.0
+
+# Data processing
+pandas>=2.1.0
+numpy>=1.26.0
+scipy>=1.11.0
+
+# Technical indicators (prefer pandas-ta for easier installation; TA-Lib as fallback)
+pandas-ta>=0.3.14b
+
+# Data sources
+tushare>=1.4.19
+akshare>=1.12.0
+yfinance>=0.2.48
+
+# Config & validation
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+pyyaml>=6.0.1
+python-dotenv>=1.0.0
+
+# Logging
+structlog>=24.1.0
+
+# Reports & visualization
+matplotlib>=3.8.0
+plotly>=5.18.0
+openpyxl>=3.1.2
+kaleido>=0.2.1          # plotly static image export
+
+# Utilities
+python-dateutil>=2.8.2
+pytz>=2024.1

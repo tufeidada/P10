@@ -1,0 +1,18 @@
+database:
+  host: ${POSTGRES_HOST:-localhost}
+  port: 5432
+  user: ${POSTGRES_USER:-hub}
+  password: ${POSTGRES_PASSWORD}
+  dbname: ${POSTGRES_DB:-stock_hub}
+
+tushare:
+  token: ${TUSHARE_TOKEN}
+  retry_times: 3
+  retry_interval: [30, 60, 120]  # seconds
+  rate_limit_per_minute: 490  # 5000积分以上限500, 留10余量
+
+etl:
+  batch_size: 5000  # Tushare单次限量
+  history_start: "20100101"  # 历史数据起始日期
+
+timezone: Asia/Shanghai
