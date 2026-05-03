@@ -1038,6 +1038,17 @@ async def task_send_daily_digest_us() -> None:
                        lambda: _send_daily_digest("US"))
 
 
+async def _composite_distribution_snapshot() -> None:
+    """Composite 分布快照核心逻辑（CN+US 合并）。"""
+    from scripts.composite_distribution_snapshot import run_snapshot
+    await run_snapshot()
+
+
+async def task_composite_snapshot() -> None:
+    """16:35 / 07:05 — Composite 分布快照（3 天观察期）。"""
+    await safe_run_job("composite_snapshot", _composite_distribution_snapshot)
+
+
 # ============================================================
 # 调度器构建
 # ============================================================
@@ -1060,6 +1071,8 @@ def build_scheduler() -> AsyncIOScheduler:
     │ run_composite_analysis_us   │ 06:30 │ M7 实装 (2026-04-21)    │
     │ send_daily_digest_cn        │ 16:30 │ M8 实装 (2026-04-21)    │
     │ send_daily_digest_us        │ 07:00 │ M8 实装 (2026-04-21)    │
+    │ composite_snapshot (CN)     │ 16:35 │ 观察期快照 (2026-04-22) │
+    │ composite_snapshot (US)     │ 07:05 │ 观察期快照 (2026-04-22) │
     └─────────────────────────────┴───────┴─────────────────────────┘
     """
     scheduler = AsyncIOScheduler(timezone=TZ_CN)
@@ -1119,6 +1132,15 @@ def build_scheduler() -> AsyncIOScheduler:
     scheduler.add_job(task_send_daily_digest_us,
                       CronTrigger(hour=7, minute=0, timezone=TZ_CN),
                       id="send_daily_digest_us", name="US日报推送")
+
+    # ---- 观察期快照（3 天，2026-04-22 起）----
+    scheduler.add_job(task_composite_snapshot,
+                      CronTrigger(hour=16, minute=35, timezone=TZ_CN),
+                      id="composite_snapshot_cn", name="Composite分布快照(CN)")
+
+    scheduler.add_job(task_composite_snapshot,
+                      CronTrigger(hour=7, minute=5, timezone=TZ_CN),
+                      id="composite_snapshot_us", name="Composite分布快照(US)")
 
     # ---- 数据补拉（周一 10:30）----
     scheduler.add_job(task_backfill_missing_bars,

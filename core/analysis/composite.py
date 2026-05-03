@@ -248,15 +248,19 @@ class CompositeAnalyzer:
         composite_score: float,
         regime_mode: str,
         dim_scores: list[float | None] | None = None,
+        has_social: bool = False,
     ) -> float:
         """计算置信度（Phase 1.5 新公式）。
 
-        基于"4维度一致性"(70%)和"分数距离中性区"(30%)，不再乘 regime_factor。
+        基于"N维度一致性"(70%)和"分数距离中性区"(30%)，不再乘 regime_factor。
+        当 has_social=False 时仅用 tech/fund/flow 3 维计算 agree_ratio，
+        避免情绪广播值（Fear & Greed / VIX）污染置信度。
 
         Args:
             composite_score: 综合得分。
             regime_mode: 当前 regime 模式（保留参数，用于 ValueError 校验）。
             dim_scores: [tech, fund, flow, sent] 四维度分数列表，可含 None。
+            has_social: 是否有个股社交情绪数据；False 时排除情绪维度。
 
         Returns:
             置信度 0.0-1.0。
@@ -279,6 +283,12 @@ class CompositeAnalyzer:
             scores.append(50.0)
         scores = scores[:4]
 
+        # 无个股社交数据时，排除情绪维度（第 4 维），改用 3 维 agree_ratio
+        if not has_social:
+            scores = scores[:3]
+
+        denom = len(scores)  # 3 或 4
+
         # 1. 维度一致性
         if composite_score > 55:
             agree_count = sum(1 for s in scores if s > 55)
@@ -287,7 +297,7 @@ class CompositeAnalyzer:
         else:
             agree_count = 0
 
-        agree_ratio = agree_count / 4.0 if composite_score != 50 else 0.3
+        agree_ratio = agree_count / denom if composite_score != 50 else 0.3
 
         # 2. 分数距离归一化
         distance = abs(composite_score - 50.0) / 50.0  # 0-1
@@ -297,30 +307,35 @@ class CompositeAnalyzer:
         return round(max(0.0, min(1.0, confidence)), 3)
 
     @staticmethod
-    def _compute_rule_signal_strength(direction: str, confidence: float) -> str:
-        """根据方向和置信度计算规则信号强度。
+    def _compute_rule_signal_strength(composite_score: float, confidence: float) -> str:
+        """根据 composite 距离和置信度计算规则信号强度（7 档）。
 
         Args:
-            direction: 方向判定（bullish/bearish/neutral）。
+            composite_score: 综合得分 0-100。
             confidence: 置信度 0-1。
 
         Returns:
-            信号强度字符串。
+            strong_buy | buy | weak_buy | hold | weak_sell | sell | strong_sell
         """
-        if direction == "bullish":
-            if confidence > 0.4:
-                return "strong_buy"
-            elif confidence > 0.25:
-                return "buy"
-            else:
-                return "hold"
-        elif direction == "bearish":
-            if confidence > 0.4:
-                return "strong_sell"
-            elif confidence > 0.25:
-                return "sell"
-            else:
-                return "hold"
+        distance = composite_score - 50.0
+        # 多方
+        if distance > 12 and confidence > 0.65:
+            return "strong_buy"
+        elif distance > 12 and confidence > 0.40:
+            return "buy"
+        elif distance > 8 and confidence > 0.25:
+            return "buy"
+        elif distance > 4 and confidence > 0.15:
+            return "weak_buy"
+        # 空方（镜像）
+        elif distance < -12 and confidence > 0.65:
+            return "strong_sell"
+        elif distance < -12 and confidence > 0.40:
+            return "sell"
+        elif distance < -8 and confidence > 0.25:
+            return "sell"
+        elif distance < -4 and confidence > 0.15:
+            return "weak_sell"
         else:
             return "hold"
 
@@ -553,12 +568,14 @@ class CompositeAnalyzer:
         # Phase 4: 情绪面评分
         sentiment_score: float | None = None
         sent_detail: dict = {}
+        has_social: bool = False  # 默认保守；异常分支同样保持 False
         try:
             from core.analysis.sentiment import SentimentAnalyzer
             sa = SentimentAnalyzer()
             sent_result = await sa.analyze(symbol, market, trade_date)
             sentiment_score = sent_result.composite
             sent_detail = sent_result.detail
+            has_social = sent_result.has_social
         except Exception as e:
             logger.warning("sentiment_score_error", symbol=symbol, error=str(e))
 
@@ -582,8 +599,9 @@ class CompositeAnalyzer:
         confidence = self._compute_confidence(
             composite, regime_mode,
             dim_scores=[tech_score, fundamental_score, flow_score, sentiment_score],
+            has_social=has_social,
         )
-        rule_signal_strength = self._compute_rule_signal_strength(direction, confidence)
+        rule_signal_strength = self._compute_rule_signal_strength(composite, confidence)
 
         # 6. 关键价位与建议
         levels = await self._get_key_levels(symbol, trade_date, tech_detail)

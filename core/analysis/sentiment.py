@@ -30,6 +30,7 @@ class SentimentAnalysis:
     social_direction: float  # 0-100，看多比例归一化（50=中性）
     market_mood: float       # 0-100，市场情绪指标
     composite: float         # 0-100，加权综合
+    has_social: bool = False  # 是否有个股社交数据（False 时 composite = market_mood 广播）
     detail: dict = field(default_factory=dict)  # 子维度详情，用于展示
 
 
@@ -114,6 +115,7 @@ class SentimentAnalyzer:
             social_direction=social_direction,
             market_mood=market_mood,
             composite=composite,
+            has_social=has_social,
             detail=detail,
         )
 

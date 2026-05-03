@@ -42,30 +42,48 @@ tail -20 "$PROJECT_DIR/logs/scheduler.log" | grep -E "job_start|task_start|job_s
 
 ## Part 2：启动基础服务
 
-### Step 1：检查 PostgreSQL
+### Step 1：启动 Docker Desktop + 数据库容器
+
+> ⚠️ **必须最先执行**。P10 的数据库（TimescaleDB）跑在 Docker 容器里，端口映射 host:5433 → container:5432。Docker 不起则所有后续步骤都会报 `Connect call failed ('127.0.0.1', 5433)`。
 
 ```bash
-/opt/homebrew/Cellar/postgresql@16/16.13/bin/pg_isready
+# 1a. 启动 Docker Desktop（如果没在状态栏看到鲸鱼图标）
+open -a Docker
+
+# 1b. 等 Docker daemon 就绪（约 10–30 秒）
+until docker info >/dev/null 2>&1; do sleep 3; done && echo "✅ Docker daemon ready"
+
+# 1c. 启动数据库容器
+cd "$PROJECT_DIR" && docker compose up -d db
+
+# 1d. 等容器内 PG 就绪
+until docker exec alpharadar-db pg_isready -U radar -d alpharadar >/dev/null 2>&1; do sleep 2; done && echo "✅ DB container ready"
 ```
 
-**通过标准**：输出 `/tmp:5432 - accepting connections`  
+**通过标准**：最后一行打印 `✅ DB container ready`  
 **失败处理**：
 
-```bash
-brew services start postgresql@16
-# 等 5 秒后再次检查
-/opt/homebrew/Cellar/postgresql@16/16.13/bin/pg_isready
-```
-
-如果 brew services 报错，查看详情：
-```bash
-brew services info postgresql@16
-cat ~/Library/Logs/Homebrew/postgresql@16/*.log 2>/dev/null | tail -20
-```
+| 症状 | 处理 |
+|------|------|
+| `open -a Docker` 报错 | Docker Desktop 未安装，重新安装 |
+| `docker compose up` 报 `no such file` | 确认在 `$PROJECT_DIR` 目录下执行 |
+| 容器一直未 ready（超过 60 秒） | `docker logs alpharadar-db` 查容器启动错误 |
+| 容器 exited | `docker compose down && docker compose up -d db` 重建 |
 
 ---
 
-### Step 2：检查网络 + Telegram 可达
+### Step 2：检查 PostgreSQL（Docker 内）
+
+```bash
+docker exec alpharadar-db pg_isready -U radar -d alpharadar
+```
+
+**通过标准**：输出 `/var/run/postgresql:5432 - accepting connections`  
+**失败处理**：回 Step 1，容器未健康则查 `docker logs alpharadar-db`
+
+---
+
+### Step 3：检查网络 + Telegram 可达
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}" https://api.telegram.org
@@ -79,7 +97,7 @@ curl -s -o /dev/null -w "%{http_code}" https://api.telegram.org
 
 ---
 
-### Step 3：检查 macOS 休眠设置（DT-011）
+### Step 4：检查 macOS 休眠设置（DT-011）
 
 **操作**：  
 `系统设置 → 电池（Battery）→ 电源适配器（Power Adapter）`  
@@ -89,7 +107,7 @@ curl -s -o /dev/null -w "%{http_code}" https://api.telegram.org
 
 ---
 
-### Step 4：验证 .env 文件存在
+### Step 5：验证 .env 文件存在
 
 ```bash
 ls "$PROJECT_DIR/.env" && echo "✅ .env exists" || echo "❌ .env MISSING"
@@ -100,7 +118,7 @@ ls "$PROJECT_DIR/.env" && echo "✅ .env exists" || echo "❌ .env MISSING"
 
 ---
 
-### Step 5：验证 Tushare API 可达
+### Step 6：验证 Tushare API 可达
 
 ```bash
 cd "$PROJECT_DIR" && set -a && source .env && set +a && \
@@ -122,7 +140,7 @@ print('✅ Tushare OK, rows:', len(df))
 
 ## Part 3：启动 P10 后台进程
 
-### Step 6：清理残留进程
+### Step 7：清理残留进程
 
 ```bash
 ps -ef | grep -E "start_scheduler|start_bot|uvicorn api.main" | grep -v grep
@@ -138,7 +156,7 @@ kill $(ps -ef | grep -E "start_scheduler|start_bot|uvicorn api.main" | grep -v g
 
 ---
 
-### Step 7：启动 Scheduler
+### Step 8：启动 Scheduler
 
 ```bash
 cd "$PROJECT_DIR" && set -a && source .env && set +a && \
@@ -152,7 +170,8 @@ echo "Scheduler PID: $!"
 3. 检查日志无错误：
 
 ```bash
-sleep 20 && tail -30 "$PROJECT_DIR/logs/scheduler.log" | grep -E "startup_check|scheduler_started|ERROR|failed"
+until grep -qE "scheduler_started|startup_check_failed|InvariantViolation" "$PROJECT_DIR/logs/scheduler.log" 2>/dev/null; do sleep 3; done
+tail -10 "$PROJECT_DIR/logs/scheduler.log"
 ```
 
 **失败处理**：
@@ -160,13 +179,14 @@ sleep 20 && tail -30 "$PROJECT_DIR/logs/scheduler.log" | grep -E "startup_check|
 | 日志关键词 | 含义 | 处理 |
 |-----------|------|------|
 | `startup_check_failed` + `market_bars_cn` | CN bars 数据超过 2 个交易日未更新 | 先手动补拉（见 Part 5） |
-| `db_pool_error` / `Connection refused` | PostgreSQL 未运行 | 回 Step 1 |
-| `telegram_push_error` | Telegram 不可达 | 回 Step 2 |
+| `Connect call failed ('127.0.0.1', 5433)` | Docker 容器未运行 | 回 Step 1 |
+| `db_pool_error` / `Connection refused` | DB 连接失败 | 回 Step 1–2 |
+| `telegram_push_error` | Telegram 不可达 | 回 Step 3 |
 | `InvariantViolation` | features 覆盖不足 48 只 | 手动跑 `python3 scripts/diagnose_feature_coverage.py` |
 
 ---
 
-### Step 8：启动 Bot
+### Step 9：启动 Bot
 
 ```bash
 cd "$PROJECT_DIR" && set -a && source .env && set +a && \
@@ -180,7 +200,8 @@ echo "Bot PID: $!"
 3. 检查日志：
 
 ```bash
-sleep 10 && tail -10 "$PROJECT_DIR/logs/bot.log" | grep -v "^{"
+tail -5 "$PROJECT_DIR/logs/bot.log"
+# 应含 telegram_bot_started
 ```
 
 **失败处理**：
@@ -189,7 +210,7 @@ sleep 10 && tail -10 "$PROJECT_DIR/logs/bot.log" | grep -v "^{"
 
 ---
 
-### Step 9：启动 API 服务（Dashboard 依赖）
+### Step 10：启动 API 服务（Dashboard 依赖）
 
 ```bash
 cd "$PROJECT_DIR" && set -a && source .env && set +a && \
@@ -204,11 +225,11 @@ sleep 5 && curl -s http://localhost:8000/api/regime/latest | python3 -c "import 
 ```
 
 输出 `✅ API OK, keys: [...]`  
-**失败处理**：看 `logs/api.log`，通常是 DB 连接失败或端口占用（`lsof -ti:8000` 查占用进程）
+**失败处理**：看 `logs/api.log`，通常是 DB 连接失败（回 Step 1）或端口占用（`lsof -ti:8000` 查占用进程）
 
 ---
 
-### Step 10：启动前端 Dashboard（可选，需要看 UI 时）
+### Step 11：启动前端 Dashboard（可选，需要看 UI 时）
 
 ```bash
 cd "$PROJECT_DIR/frontend" && npm run dev
@@ -226,18 +247,22 @@ echo "Frontend PID: $!"
 
 ## Part 4：验证系统健康
 
-### Step 11：进程全家桶检查
+### Step 12：进程全家桶检查
 
 ```bash
-ps -ef | grep -E "start_scheduler|start_bot|uvicorn api.main" | grep -v grep
+# Docker 容器
+docker ps | grep alpharadar-db
+
+# P10 进程（应有 3 行）
+ps -ef | grep -E "start_scheduler|start_bot|uvicorn api.main" | grep -v grep | awk '{print $2, $9, $10}'
 ```
 
-**通过标准**：显示 3 行（scheduler + bot + uvicorn）  
+**通过标准**：Docker 容器 Up，P10 进程 3 行（scheduler + bot + uvicorn）  
 **失败处理**：缺哪个 → 回对应 Step 补启
 
 ---
 
-### Step 12：Telegram /status 验证
+### Step 13：Telegram /status 验证
 
 在 Telegram 向 Bot 发送 `/status`
 
@@ -253,7 +278,7 @@ ps -ef | grep -E "start_scheduler|start_bot|uvicorn api.main" | grep -v grep
 
 ---
 
-### Step 13：确认 Scheduler 17 个 job 注册
+### Step 14：确认 Scheduler 17 个 job 注册
 
 Telegram 发 `/status`，在 Scheduler 区块确认以下 17 个 job 全部出现：
 
@@ -272,7 +297,7 @@ backfill_missing_bars   weekly_review    monthly_review
 
 ---
 
-### Step 14：首个心跳确认
+### Step 15：首个心跳确认
 
 等 5 分钟后执行（scheduler 每 30 分钟写心跳）：
 
@@ -375,11 +400,27 @@ cd "$PROJECT_DIR" && set -a && source .env && set +a && \
 python3 scripts/start_scheduler.py run_job pull_cn_market_data
 ```
 
-成功后重新启动 scheduler（Step 7）。
+成功后重新启动 scheduler（Step 8）。
 
 ---
 
 ## Part 6：异常情况速查
+
+### Docker 容器未启动（最常见根因）
+
+```bash
+# 检查 Docker daemon
+docker info >/dev/null 2>&1 && echo "Docker running" || echo "Docker NOT running"
+
+# 检查容器状态
+docker ps -a | grep alpharadar-db
+
+# 重启容器
+cd "$PROJECT_DIR" && docker compose up -d db
+until docker exec alpharadar-db pg_isready -U radar -d alpharadar >/dev/null 2>&1; do sleep 2; done && echo "✅ Ready"
+```
+
+---
 
 ### Telegram 无响应
 
@@ -423,11 +464,11 @@ nohup python3 scripts/start_scheduler.py >> logs/scheduler.log 2>&1 & echo "New 
 curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/regime/latest
 # 通过标准: 200
 
-# 如果 API 未运行，重启 API（Step 9）
+# 如果 API 未运行，重启 API（Step 10）
 
 # 检查前端是否运行
 ps -ef | grep "npm run dev\|vite" | grep -v grep
-# 如果没有，重启前端（Step 10）
+# 如果没有，重启前端（Step 11）
 ```
 
 ---
@@ -483,6 +524,7 @@ asyncio.run(main())
 
 ## Part 7：长期改进（当前暂不做）
 
+- **Docker 开机自启**：Docker Desktop 设置 → General → 勾选 "Start Docker Desktop when you sign in to your computer"，彻底避免忘记启动 Docker
 - **自动开机启动**：配置 launchd plist，Mac 重启后自动拉起 scheduler/bot/api（彻底消灭本清单的使用场景）
 - **迁移 conda 环境**：将 Python 3.9 系统环境迁移到独立 conda env `p10`（DT-016），解决版本不可控问题
 - **部署到云服务器**：Mac 休眠、重启问题根治方案，本清单归档
@@ -500,4 +542,4 @@ asyncio.run(main())
 
 ---
 
-*最后更新：2026-04-22 · 对应 scheduler PID 体系（17 jobs）*
+*最后更新：2026-04-22 · 新增 Step 1 Docker 启动（DB 跑在 Docker 容器 host:5433）；Steps 编号整体 +1*

@@ -100,12 +100,35 @@ def _regime_summary(regime: dict) -> str:
 
 
 _SIG_DISPLAY: dict[str, str] = {
-    "strong_buy": "STRONG_BUY",
-    "buy": "BUY",
-    "hold": "HOLD",
-    "sell": "SELL",
+    "strong_buy":  "STRONG_BUY",
+    "buy":         "BUY",
+    "weak_buy":    "WEAK_BUY",
+    "hold":        "HOLD",
+    "weak_sell":   "WEAK_SELL",
+    "sell":        "SELL",
     "strong_sell": "STRONG_SELL",
 }
+
+_BULL_STRENGTHS = ("strong_buy", "buy", "weak_buy")
+_BEAR_STRENGTHS = ("strong_sell", "sell", "weak_sell")
+_STRENGTH_RANK: dict[str, int] = {
+    "strong_buy": 0, "buy": 1, "weak_buy": 2,
+    "strong_sell": 0, "sell": 1, "weak_sell": 2,
+}
+
+
+def _group_signals(
+    judgments: list[dict],
+    strengths: tuple[str, ...],
+) -> tuple[list[dict], dict[str, int]]:
+    """按 rule_signal_strength 分组并排序（强度优先，同档内 composite 降序）。"""
+    subset = [r for r in judgments if r.get("rule_signal_strength") in strengths]
+    subset.sort(key=lambda r: (
+        _STRENGTH_RANK.get(r.get("rule_signal_strength", ""), 99),
+        -float(r.get("composite_score") or 0),
+    ))
+    counts = {s: sum(1 for r in subset if r.get("rule_signal_strength") == s) for s in strengths}
+    return subset, counts
 
 
 def _format_judgment_line(row: dict, show_name: bool = True) -> str:
@@ -211,13 +234,16 @@ def _build_digest(
         lines.append("🌡 Regime: 暂无数据")
     lines.append("")
 
-    # 分组
-    bullish = [r for r in judgments if r.get("direction") == "bullish"]
-    bearish = [r for r in judgments if r.get("direction") == "bearish"]
-    neutral = [r for r in judgments if r.get("direction") == "neutral"]
+    # 分组（按 rule_signal_strength，不再依赖 direction）
+    bullish, bull_counts = _group_signals(judgments, _BULL_STRENGTHS)
+    bearish, bear_counts = _group_signals(judgments, _BEAR_STRENGTHS)
+    neutral = [r for r in judgments if r.get("rule_signal_strength") == "hold"]
 
     # 多方
-    lines.append(f"📈 <b>多方信号 ({len(bullish)})</b>")
+    bull_breakdown = (
+        f"强买 {bull_counts['strong_buy']} / 买 {bull_counts['buy']} / 弱买 {bull_counts['weak_buy']}"
+    )
+    lines.append(f"📈 <b>多方信号 ({len(bullish)})</b>  {bull_breakdown}")
     if bullish:
         for r in bullish[:10]:
             lines.append(_format_judgment_line(r))
@@ -226,7 +252,10 @@ def _build_digest(
     lines.append("")
 
     # 空方
-    lines.append(f"📉 <b>空方信号 ({len(bearish)})</b>")
+    bear_breakdown = (
+        f"强卖 {bear_counts['strong_sell']} / 卖 {bear_counts['sell']} / 弱卖 {bear_counts['weak_sell']}"
+    )
+    lines.append(f"📉 <b>空方信号 ({len(bearish)})</b>  {bear_breakdown}")
     if bearish:
         for r in bearish[:10]:
             lines.append(_format_judgment_line(r))
