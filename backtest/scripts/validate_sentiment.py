@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from backtest.pit_loader import PITDataLoader, create_pool
 from backtest.analysis.sentiment import analyze_market_sentiment
 
-DSN = "postgresql://radar:alpharadar2026@localhost:5433/alpharadar"
+DSN = "postgresql://radar:alpharadar2026@localhost:5434/alpharadar"
 
 CASES = [
     ("CN", date(2025, 10, 15), "A股反弹启动期，预期偏乐观 60-70"),

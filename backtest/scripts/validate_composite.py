@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from backtest.pit_loader import PITDataLoader, create_pool
 from backtest.analysis.composite import generate_judgment, save_judgment
 
-DSN = "postgresql://radar:alpharadar2026@localhost:5433/alpharadar"
+DSN = "postgresql://radar:alpharadar2026@localhost:5434/alpharadar"
 
 
 def _fmt(v, fmt=".2f", unit="") -> str:

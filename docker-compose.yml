@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   db:
-    image: timescale/timescaledb:latest-pg15
+    image: timescale/timescaledb:latest-pg16
     container_name: alpharadar-db
     environment:
       POSTGRES_DB: alpharadar
@@ -12,7 +12,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
     ports:
-      - "5433:5432"
+      - "5434:5432"
     command: >
       postgres
         -c shared_preload_libraries='timescaledb'
@@ -36,4 +36,5 @@ services:
 
 volumes:
   pgdata:
-    driver: local
+    external: true
+    name: pgdata

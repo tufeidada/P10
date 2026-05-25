@@ -14,7 +14,7 @@ import asyncpg
 from backtest.analysis.fundamental import analyze_fundamental
 
 
-DSN = "postgresql://radar:alpharadar2026@localhost:5433/alpharadar"
+DSN = "postgresql://radar:alpharadar2026@localhost:5434/alpharadar"
 
 CASES = [
     ("000063.SZ", "CN", date(2026, 1, 15)),   # 通信 / technology framework

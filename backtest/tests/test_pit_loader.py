@@ -29,7 +29,7 @@ from backtest.pit_loader import PITDataLoader, create_pool  # noqa: E402
 
 _DSN = os.environ.get(
     "DATABASE_URL",
-    "postgresql://radar:alpharadar2026@localhost:5433/alpharadar",
+    "postgresql://radar:alpharadar2026@localhost:5434/alpharadar",
 )
 _SCHEMA = f"test_pit_{os.getpid()}"
 

@@ -14,7 +14,7 @@ import asyncpg
 from backtest.pit_loader import PITDataLoader, create_pool
 from backtest.analysis.flow import analyze_flow
 
-DSN = "postgresql://radar:alpharadar2026@localhost:5433/alpharadar"
+DSN = "postgresql://radar:alpharadar2026@localhost:5434/alpharadar"
 
 CASES = [
     ("000063.SZ", "CN", date(2026, 1, 15)),  # 中兴通讯，弱势期（北向有历史）

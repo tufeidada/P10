@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from backtest.engine.engine import BacktestEngine
 from backtest.pit_loader import create_pool
 
-DSN = "postgresql://radar:alpharadar2026@localhost:5433/alpharadar"
+DSN = "postgresql://radar:alpharadar2026@localhost:5434/alpharadar"
 WATCHLIST_PATH = str(Path(__file__).resolve().parents[1] / "config" / "watchlist.yaml")
 
 logging.basicConfig(
