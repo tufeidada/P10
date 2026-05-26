@@ -45,29 +45,38 @@ auto:
 - [ ] ...
 ````
 
----
 
-## 2026-05-26 (周二)  ← 示例占位
+## 2026-05-26 (周二)
 
 ```yaml
 auto:
-  cron_status_cn: pending       # 等今晚 16:30 之后自动填
-  cron_status_us: pending       # 等明早 07:00 之后自动填
-  cn_candidates_analyzed: 26
-  us_candidates_analyzed: 22
-  regime_cn: unknown            # 自动填
-  regime_us: unknown
-  note: "首条记录，待 scheduler 接入后自动写入"
+  cn_candidates_analyzed: 52
+  regime_cn: cautious_offense
+  cn_signals:
+    strong_buy: []
+    buy: ['300502.SZ', '002050.SZ', '603893.SH', '000962.SZ', '600590.SH', '600160.SH', '603986.SH', '603683.SH', '000960.SZ', '000657.SZ', '601138.SH']
+    weak_buy: ['600392.SH', '000510.SZ']
+    weak_sell: ['603716.SH']
+    sell: ['002426.SZ']
+    strong_sell: []
+  us_candidates_analyzed: 0
+  regime_us: cautious_offense
+  us_signals:
+    strong_buy: []
+    buy: []
+    weak_buy: []
+    weak_sell: []
+    sell: []
+    strong_sell: []
 ```
 
-### 我看了什么 / 关注什么
-- _今天还没做按需研究，先观察 16:30 候选池信号_
+### 我看了什么 / 关注什么（人工补）
+- _待补_
 
 ### 反思 / 待跟进
-- [ ] 16:30 之后查看 Telegram 日报，记录强势信号
-- [ ] 本周内：让 `composite_snapshot` job 末尾追加 YAML 到本文件
-- [ ] 想试一次 `python scripts/run_composite_once.py --symbol 600519.SH --market CN`，感受输出格式
+- [ ] _待补_
 
+---
 ---
 
 <!-- 新的一天追加在上面，最新日期在顶部 -->

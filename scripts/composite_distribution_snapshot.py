@@ -172,6 +172,96 @@ async def run_snapshot(market: str | None = None) -> None:
     except Exception as e:
         logger.warning("snapshot_telegram_failed", error=str(e))
 
+    # 追加 YAML 段到 DAILY_LOG.md（自动部分）— 见 AI_PLAYBOOK 约定
+    try:
+        await _append_daily_log(stats_list, today)
+    except Exception as e:
+        logger.warning("daily_log_append_failed", error=str(e))
+
+
+async def _append_daily_log(stats_list: list[dict], today: date) -> None:
+    """把 snapshot 结果以 YAML block 追加到 DAILY_LOG.md。"""
+    from db.connection import db_query
+
+    daily_log = Path(__file__).resolve().parent.parent / "DAILY_LOG.md"
+    if not daily_log.exists():
+        logger.info("daily_log_not_found", path=str(daily_log))
+        return
+
+    # 每天最多写一次（同日重复运行不重复追加）
+    existing = daily_log.read_text(encoding="utf-8")
+    date_header = f"## {today.isoformat()}"
+    if f"\n{date_header} " in existing or f"\n{date_header}\n" in existing:
+        logger.info("daily_log_already_has_today", date=today.isoformat())
+        return
+
+    # 收集每个市场 top 多/空方
+    by_market: dict[str, dict] = {}
+    for s in stats_list:
+        m = s["market"]
+        rows = await db_query(
+            "SELECT symbol, composite_score, rule_signal_strength FROM judgments "
+            "WHERE judgment_date=$1 AND market=$2 ORDER BY composite_score DESC",
+            today, m,
+        )
+        by_market[m] = {
+            "regime": s.get("regime", "unknown"),
+            "count": s.get("count", 0),
+            "signals": {
+                "strong_buy": [r["symbol"] for r in rows if r["rule_signal_strength"] == "strong_buy"],
+                "buy": [r["symbol"] for r in rows if r["rule_signal_strength"] == "buy"],
+                "weak_buy": [r["symbol"] for r in rows if r["rule_signal_strength"] == "weak_buy"],
+                "weak_sell": [r["symbol"] for r in rows if r["rule_signal_strength"] == "weak_sell"],
+                "sell": [r["symbol"] for r in rows if r["rule_signal_strength"] == "sell"],
+                "strong_sell": [r["symbol"] for r in rows if r["rule_signal_strength"] == "strong_sell"],
+            },
+        }
+
+    weekday_cn = ["一", "二", "三", "四", "五", "六", "日"][today.weekday()]
+    block_lines = [
+        "",
+        f"{date_header} (周{weekday_cn})",
+        "",
+        "```yaml",
+        "auto:",
+    ]
+    for mkt in ("CN", "US"):
+        if mkt not in by_market:
+            continue
+        d = by_market[mkt]
+        block_lines.append(f"  {mkt.lower()}_candidates_analyzed: {d['count']}")
+        block_lines.append(f"  regime_{mkt.lower()}: {d['regime']}")
+        block_lines.append(f"  {mkt.lower()}_signals:")
+        for sig in ("strong_buy", "buy", "weak_buy", "weak_sell", "sell", "strong_sell"):
+            symbols = d["signals"][sig]
+            block_lines.append(f"    {sig}: {symbols if symbols else '[]'}")
+    block_lines += [
+        "```",
+        "",
+        "### 我看了什么 / 关注什么（人工补）",
+        "- _待补_",
+        "",
+        "### 反思 / 待跟进",
+        "- [ ] _待补_",
+        "",
+        "---",
+    ]
+    new_block = "\n".join(block_lines)
+
+    # 插入到 "<!-- 新的一天追加在上面" 标记前；如果找不到就追加末尾
+    marker = "<!-- 新的一天追加在上面"
+    if marker in existing:
+        # 在 marker 前插入新块（新日期排在顶部）
+        idx = existing.rfind("---\n\n" + marker)
+        if idx == -1:
+            idx = existing.rfind(marker)
+        new_content = existing[:idx] + new_block + "\n" + existing[idx:]
+    else:
+        new_content = existing.rstrip() + "\n\n" + new_block + "\n"
+
+    daily_log.write_text(new_content, encoding="utf-8")
+    logger.info("daily_log_appended", date=today.isoformat(), markets=list(by_market.keys()))
+
 
 async def _main() -> None:
     import argparse
