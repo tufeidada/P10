@@ -539,10 +539,21 @@ async def get_candidates(limit: int = Query(100)):
             LIMIT 1
         ) j ON TRUE
         LEFT JOIN LATERAL (
-            SELECT close AS latest_close, pct_chg AS latest_pct_chg, trade_date AS latest_bar_date
-            FROM market_bars_daily mbd
-            WHERE mbd.symbol = su.symbol
-            ORDER BY mbd.trade_date DESC
+            -- market_bars_daily has no pct_chg column; compute via LAG over last 2 bars.
+            SELECT close AS latest_close,
+                   CASE WHEN prev_close IS NOT NULL AND prev_close <> 0
+                        THEN ROUND(((close - prev_close) / prev_close * 100.0)::numeric, 2)
+                        ELSE NULL END AS latest_pct_chg,
+                   trade_date AS latest_bar_date
+            FROM (
+                SELECT close, trade_date,
+                       LAG(close) OVER (ORDER BY trade_date) AS prev_close
+                FROM market_bars_daily
+                WHERE symbol = su.symbol
+                ORDER BY trade_date DESC
+                LIMIT 2
+            ) recent_bars
+            ORDER BY trade_date DESC
             LIMIT 1
         ) bar ON TRUE
         WHERE su.active = TRUE

@@ -1,0 +1,18 @@
+symbol,market,name,industry,priority,tags,notes
+688256.SH,CN,寒武纪-U,半导体,1,"[""半导体"",""AI芯片""]",国产AI训练/推理芯片龙头
+688981.SH,CN,中芯国际,半导体,1,"[""半导体"",""晶圆代工""]",国产晶圆代工龙头
+002230.SZ,CN,科大讯飞,计算机,1,"[""AI"",""大模型""]",国产大模型代表
+300308.SZ,CN,中际旭创,通信,1,"[""光模块"",""AI算力""]",硅光800G模块龙头
+000977.SZ,CN,浪潮信息,计算机,1,"[""AI服务器""]",AI服务器龙头
+300223.SZ,CN,北京君正,半导体,1,"[""存储"",""车规芯片""]",AI存储+车规MCU
+002475.SZ,CN,立讯精密,电子,1,"[""消费电子"",""AI硬件""]",AI眼镜/服务器代工
+300750.SZ,CN,宁德时代,电池,2,"[""电池"",""算力配套""]",AI数据中心储能/动力电池龙头
+AMD,US,Advanced Micro Devices,technology,1,"[""半导体"",""AI芯片""]",AI GPU/CPU第二梯队
+AVGO,US,Broadcom,technology,1,"[""半导体"",""AI网络""]",AI网络芯片+ASIC定制
+TSM,US,Taiwan Semiconductor,technology,1,"[""半导体"",""晶圆代工""]",全球AI芯片代工龙头
+PLTR,US,Palantir,technology,1,"[""AI软件""]",AIP/Foundry政府+企业AI
+SMCI,US,Super Micro Computer,technology,2,"[""AI服务器""]",NVDA核心AI服务器伙伴
+ARM,US,Arm Holdings,technology,2,"[""半导体IP""]",AI芯片架构IP
+ASML,US,ASML Holding,technology,1,"[""半导体设备"",""EUV""]",EUV光刻机独家
+MRVL,US,Marvell Technology,technology,2,"[""半导体"",""AI网络""]",AI互连/光模块芯片
+QCOM,US,Qualcomm,technology,2,"[""半导体""]",AI PC/手机算力
