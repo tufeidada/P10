@@ -584,11 +584,28 @@ class CompositeAnalyzer:
         eff_flow = flow_score if flow_score is not None else _NEUTRAL_SCORE
         eff_sentiment = sentiment_score if sentiment_score is not None else _NEUTRAL_SCORE
 
+        # has_social=False 时 sentiment 退化为 market_mood 广播，所有个股拿到同一个值，
+        # 相当于给 composite 加同一个常数偏置——拉高/拉低整体分布，让 rule 信号
+        # 过于乐观或悲观。解决：把 sentiment 权重按比例重分配到 tech/fund/flow，
+        # 让 composite 完全由个股可分辨维度决定。
+        w_tech = weights.get("technical", 0.30)
+        w_fund = weights.get("fundamental", 0.35)
+        w_flow = weights.get("flow", 0.20)
+        w_sent = weights.get("sentiment", 0.15)
+        if not has_social:
+            non_sent_total = w_tech + w_fund + w_flow
+            if non_sent_total > 0:
+                scale = (non_sent_total + w_sent) / non_sent_total
+                w_tech *= scale
+                w_fund *= scale
+                w_flow *= scale
+                w_sent = 0.0
+
         composite = (
-            tech_score * weights.get("technical", 0.30)
-            + eff_fundamental * weights.get("fundamental", 0.35)
-            + eff_flow * weights.get("flow", 0.20)
-            + eff_sentiment * weights.get("sentiment", 0.15)
+            tech_score * w_tech
+            + eff_fundamental * w_fund
+            + eff_flow * w_flow
+            + eff_sentiment * w_sent
         )
         composite = round(max(0.0, min(100.0, composite)), 2)
         assert_range(composite, 0.0, 100.0, "composite.final_score")
