@@ -77,6 +77,38 @@ auto:
 - [ ] _待补_
 
 ---
+
+## 2026-05-27 (周三)
+
+```yaml
+auto:
+  cn_candidates_analyzed: 34
+  regime_cn: cautious_offense
+  cn_signals:
+    strong_buy: []
+    buy: []
+    weak_buy: []
+    weak_sell: []
+    sell: []
+    strong_sell: []
+  us_candidates_analyzed: 31
+  regime_us: cautious_offense
+  us_signals:
+    strong_buy: []
+    buy: []
+    weak_buy: ['NVDA', 'ADBE']
+    weak_sell: []
+    sell: ['AMD', 'MRVL', 'AVGO', 'ASML', 'ARM', 'PLTR', 'QCOM', 'SMCI', 'TSM']
+    strong_sell: []
+```
+
+### 我看了什么 / 关注什么（人工补）
+- _待补_
+
+### 反思 / 待跟进
+- [ ] _待补_
+
+---
 ---
 
 <!-- 新的一天追加在上面，最新日期在顶部 -->

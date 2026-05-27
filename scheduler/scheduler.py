@@ -49,7 +49,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from core.invariants import InvariantViolation
-from db.connection import close_pool, init_pool
+from db.connection import close_pool, db_query_val, init_pool
 
 logger = structlog.get_logger(__name__)
 
@@ -988,12 +988,38 @@ async def task_detect_regime_us() -> None:
 
 
 async def _run_composite_analysis(market: str) -> None:
-    """Composite 分析核心逻辑（CN/US 共用）。"""
-    from datetime import date as _date
+    """Composite 分析核心逻辑（CN/US 共用）。
+
+    使用 features_daily 中该 market 的最新可用日期作为 trade_date，
+    而不是 date.today()——避免在交易日尚未产生 EOD features 时
+    生成 fallback 假数据（symbol 维度全部 _NEUTRAL_SCORE）。
+
+    US 链路在 BJT 06:30 跑时，date.today() 是 BJT 当天但 US EOD 数据
+    日期是 BJT 昨天。CN 链路也可能在 features 尚未更新时被触发。
+    """
     from core.analysis.composite import CompositeAnalyzer
 
     analyzer = CompositeAnalyzer()
-    trade_date = _date.today()
+
+    # 用 universe 范围内的 features 最新日期：避免被全市场 features 拉偏。
+    trade_date = await db_query_val(
+        """
+        SELECT MAX(f.trade_date)
+        FROM features_daily f
+        JOIN stock_universe u
+          ON u.symbol = f.symbol
+        WHERE u.market = $1 AND u.active = TRUE
+        """,
+        market,
+    )
+    if trade_date is None:
+        logger.warning("composite_skip_no_features", market=market)
+        from db.job_log import log_job
+        await log_job(f"run_composite_analysis_{market.lower()}", "skipped",
+                      error_message="no features_daily for active universe")
+        return
+
+    logger.info("composite_using_trade_date", market=market, trade_date=str(trade_date))
     results = await analyzer.analyze_universe(market=market, trade_date=trade_date, dry_run=False)
     saved = 0
     for r in results:
