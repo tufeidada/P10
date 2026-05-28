@@ -14,6 +14,21 @@ import type { JudgmentDetail, JudgmentHistory } from '../types';
 import RadarChartComponent from './RadarChartComponent';
 import JudgmentTimeline from './JudgmentTimeline';
 import FactorWaterfall from './FactorWaterfall';
+import LLMVoteBreakdown from './LLMVoteBreakdown';
+
+interface PerModelResult {
+  model: string;
+  ok: boolean;
+  elapsed_ms?: number;
+  direction?: string;
+  signal_strength?: string;
+  reasoning?: string | null;
+  risks?: string | null;
+  extra_advice?: string | null;
+  narrative?: string | null;
+  error?: string;
+  raw_excerpt?: string;
+}
 
 interface StockDetailProps {
   symbol: string;
@@ -482,6 +497,24 @@ export default function StockDetail({ symbol, onBack }: StockDetailProps) {
 
           {/* Dual signal */}
           {judgment && <DualSignalCard judgment={judgment} />}
+
+          {/* Multi-LLM voting breakdown — dev-mode info density */}
+          {judgment && (() => {
+            const ss = (judgment.signal_sources || {}) as Record<string, unknown>;
+            const pm = ss['llm_per_model_results'] as PerModelResult[] | undefined;
+            if (!pm || pm.length === 0) return null;
+            return (
+              <LLMVoteBreakdown
+                perModel={pm}
+                voted={{
+                  direction: judgment.llm_direction ?? 'unknown',
+                  signal: judgment.llm_signal_strength ?? 'unknown',
+                  consensus: judgment.llm_vote_consensus ?? 0,
+                  total: judgment.llm_vote_total_calls ?? 0,
+                }}
+              />
+            );
+          })()}
 
           {/* LLM narrative */}
           {jLoading && !judgment ? (

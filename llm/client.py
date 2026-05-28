@@ -38,11 +38,18 @@ _MAX_RETRIES: int = 2
 _RETRY_DELAY: float = 5.0   # 5 秒间隔
 _REQUEST_TIMEOUT: float = 60.0
 
-# 降级链: deepseek → doubao → qwen
+# 降级链: deepseek → doubao → qwen (mimo 不进降级链，由 voting 调度独立请求)
 _FALLBACK_CHAIN: dict[str, list[str]] = {
     "deepseek": ["doubao", "qwen"],
     "doubao": ["deepseek", "qwen"],
     "qwen": ["deepseek", "doubao"],
+    "mimo":   ["deepseek", "doubao"],  # mimo 自身失败时再降级到 deepseek
+}
+
+# mimo 模型有显式思维链 (reasoning_content)，必须给足 max_tokens 否则 narrative
+# 会被截断。voting 调度按 provider 调整 max_tokens 时参考此默认。
+_MIN_MAX_TOKENS_BY_PROVIDER: dict[str, int] = {
+    "mimo": 5000,
 }
 
 # 预算配置缓存
@@ -106,6 +113,14 @@ class LLMClient:
                     "https://dashscope.aliyuncs.com/compatible-mode/v1",
                 ),
                 "model": os.environ.get("QWEN_MODEL", "qwen-turbo-latest"),
+            },
+            "mimo": {
+                "api_key": os.environ.get("MIMO_API_KEY", ""),
+                "base_url": os.environ.get(
+                    "MIMO_BASE_URL",
+                    "https://token-plan-cn.xiaomimimo.com/v1",
+                ),
+                "model": os.environ.get("MIMO_MODEL", "mimo-v2.5-pro"),
             },
         }
 
@@ -233,9 +248,12 @@ class LLMClient:
             cfg = self._configs.get(provider)
             if not cfg or not self.is_configured(provider):
                 continue
+            # Some providers (mimo) emit a hidden reasoning chain that eats
+            # the max_tokens budget; bump up so the final content isn't cut.
+            provider_max_tokens = max(max_tokens, _MIN_MAX_TOKENS_BY_PROVIDER.get(provider, 0))
             try:
                 text, usage = await self._call_with_retries(
-                    cfg, messages, temperature, max_tokens, provider
+                    cfg, messages, temperature, provider_max_tokens, provider
                 )
                 # Strip thinking tags (Doubao/Qwen sometimes include them)
                 if "<think>" in text:

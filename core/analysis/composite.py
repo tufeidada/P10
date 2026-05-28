@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from dataclasses import asdict, dataclass, field
 from datetime import date
 from typing import Any
@@ -409,6 +410,10 @@ class CompositeAnalyzer:
         except (json.JSONDecodeError, AttributeError):
             return None
 
+    # 多模型 voting 默认：每个 provider 各跑 1 票，分歧度更大；
+    # 改成 dict 形式以便未来扩展（per-model 调用次数）。
+    _VOTE_PROVIDERS: list[str] = ["deepseek", "mimo", "doubao"]
+
     async def _llm_analyze_with_vote(
         self,
         prompt_msgs: list[dict[str, str]],
@@ -416,79 +421,116 @@ class CompositeAnalyzer:
         market: str,
         n_calls: int = 3,
     ) -> dict[str, Any]:
-        """3-call majority vote LLM 分析。
+        """跨模型 voting：每个 provider 各跑 1 票（n_calls 忽略，统一用 _VOTE_PROVIDERS）。
 
-        同一 prompt 调用 LLM n_calls 次，对 direction / signal_strength 取众数，
-        选取方向与众数一致的第一次调用的完整文本（narrative / reasoning 等）。
+        - direction / signal_strength 取众数
+        - reasoning / narrative 选择"方向与众数一致的第一个回复"
+        - per_model_results 保留每个模型的完整答案（含失败时的占位），
+          供前端开发期展示
 
         Returns:
-            包含 direction, signal_strength, reasoning, risks, extra_advice, narrative,
-            vote_consensus, vote_total_calls 的 dict。
+            dict 包含 direction, signal_strength, reasoning, risks, extra_advice,
+            narrative, vote_consensus, vote_total_calls, per_model_results。
         """
         from collections import Counter
         from llm.client import LLMClient
         llm = LLMClient()
 
-        raw_results: list[dict[str, Any]] = []
-        for i in range(n_calls):
+        providers_to_call = list(self._VOTE_PROVIDERS)
+        # 兼容旧入参：n_calls 还可用来限制 provider 数（≤ len(_VOTE_PROVIDERS)）
+        if n_calls and n_calls > 0:
+            providers_to_call = providers_to_call[:n_calls]
+
+        per_model: list[dict[str, Any]] = []
+        for provider in providers_to_call:
+            if not llm.is_configured(provider):
+                per_model.append({
+                    "model": provider,
+                    "ok": False,
+                    "error": "not_configured",
+                })
+                continue
+            t0 = time.monotonic()
             try:
                 raw = await llm.chat(
-                    prompt_msgs, model="deepseek", max_tokens=900,
+                    prompt_msgs, model=provider,
+                    max_tokens=900,  # mimo 由 client 内部抬到 5000
                     temperature=0.0,
                     symbol=symbol, market=market,
                 )
                 parsed = self._parse_llm_json(raw)
-                if parsed:
-                    raw_results.append(parsed)
+                elapsed_ms = int((time.monotonic() - t0) * 1000)
+                if parsed and parsed.get("direction"):
+                    per_model.append({
+                        "model": provider,
+                        "ok": True,
+                        "elapsed_ms": elapsed_ms,
+                        "direction": parsed.get("direction"),
+                        "signal_strength": parsed.get("signal_strength"),
+                        "reasoning": parsed.get("reasoning"),
+                        "risks": parsed.get("risks"),
+                        "extra_advice": parsed.get("extra_advice"),
+                        "narrative": parsed.get("narrative"),
+                    })
+                else:
+                    per_model.append({
+                        "model": provider,
+                        "ok": False,
+                        "elapsed_ms": elapsed_ms,
+                        "error": "parse_failed_or_no_direction",
+                        "raw_excerpt": (raw or "")[:300],
+                    })
             except Exception as e:
-                logger.warning("llm_vote_call_failed", call_index=i, symbol=symbol, error=str(e))
+                elapsed_ms = int((time.monotonic() - t0) * 1000)
+                logger.warning("llm_vote_call_failed", model=provider, symbol=symbol, error=str(e))
+                per_model.append({
+                    "model": provider,
+                    "ok": False,
+                    "elapsed_ms": elapsed_ms,
+                    "error": str(e)[:200],
+                })
 
-        if not raw_results:
+        ok_results = [r for r in per_model if r.get("ok")]
+        if not ok_results:
             return {
                 "direction": "unknown", "signal_strength": "unknown",
                 "reasoning": None, "risks": None, "extra_advice": None,
                 "narrative": None, "vote_consensus": 0.0,
                 "vote_total_calls": 0,
+                "per_model_results": per_model,
             }
 
-        directions = [r["direction"] for r in raw_results if r.get("direction")]
-        strengths = [r["signal_strength"] for r in raw_results if r.get("signal_strength")]
+        directions = [r["direction"] for r in ok_results if r.get("direction")]
+        strengths = [r["signal_strength"] for r in ok_results if r.get("signal_strength")]
 
         voted_direction = Counter(directions).most_common(1)[0][0] if directions else "unknown"
         voted_strength = Counter(strengths).most_common(1)[0][0] if strengths else "unknown"
         vote_count = Counter(directions).most_common(1)[0][1] if directions else 0
-        consensus = round(vote_count / len(raw_results), 2) if raw_results else 0.0
+        consensus = round(vote_count / len(ok_results), 2) if ok_results else 0.0
 
-        logger.debug(
+        logger.info(
             "llm_vote_result",
             symbol=symbol,
             voted_direction=voted_direction,
             voted_strength=voted_strength,
             consensus=consensus,
-            calls_done=len(raw_results),
-            calls_requested=n_calls,
+            calls_done=len(ok_results),
+            models_attempted=[r["model"] for r in per_model],
+            models_ok=[r["model"] for r in ok_results],
         )
 
-        # 取方向与众数一致的第一次调用的文本内容
-        for r in raw_results:
-            if r.get("direction") == voted_direction:
-                return {
-                    "direction": voted_direction,
-                    "signal_strength": voted_strength,
-                    "reasoning": r.get("reasoning"),
-                    "risks": r.get("risks"),
-                    "extra_advice": r.get("extra_advice"),
-                    "narrative": r.get("narrative"),
-                    "vote_consensus": consensus,
-                    "vote_total_calls": len(raw_results),
-                }
-
-        # Fallback（理论上不可达）
+        # 选方向与众数一致的第一条作为"主报告"
+        primary = next((r for r in ok_results if r.get("direction") == voted_direction), ok_results[0])
         return {
-            "direction": voted_direction, "signal_strength": voted_strength,
-            "reasoning": None, "risks": None, "extra_advice": None,
-            "narrative": None, "vote_consensus": consensus,
-            "vote_total_calls": len(raw_results),
+            "direction": voted_direction,
+            "signal_strength": voted_strength,
+            "reasoning": primary.get("reasoning"),
+            "risks": primary.get("risks"),
+            "extra_advice": primary.get("extra_advice"),
+            "narrative": primary.get("narrative"),
+            "vote_consensus": consensus,
+            "vote_total_calls": len(ok_results),
+            "per_model_results": per_model,
         }
 
     async def analyze(
@@ -673,6 +715,7 @@ class CompositeAnalyzer:
         llm_extra_advice: str | None = None
         llm_vote_consensus: float | None = None
         llm_vote_total_calls: int | None = None
+        llm_per_model: list[dict[str, Any]] = []
         if dry_run:
             logic_text = (
                 f"[DRY RUN] tech={tech_score:.0f} "
@@ -716,6 +759,8 @@ class CompositeAnalyzer:
                     logic_text = vote_result["narrative"]
                     llm_vote_consensus = vote_result["vote_consensus"]
                     llm_vote_total_calls = vote_result["vote_total_calls"]
+                    # 保留每个 LLM 的原始结果到 signal_sources，前端开发期展示
+                    llm_per_model = vote_result.get("per_model_results", [])
             except Exception as e:
                 logger.warning("llm_narrative_error", symbol=symbol, error=str(e))
 
@@ -785,6 +830,7 @@ class CompositeAnalyzer:
             "llm_extra_advice": llm_extra_advice,
             "llm_vote_consensus": llm_vote_consensus,
             "llm_vote_total_calls": llm_vote_total_calls,
+            "llm_per_model_results": llm_per_model,
             "position_sizing": (
                 {
                     "shares": position_sizing.shares,
