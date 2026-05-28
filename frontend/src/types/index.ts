@@ -102,8 +102,15 @@ export interface JudgmentHistory {
   fundamental_score: number | null;
   flow_score: number | null;
   sentiment_score: number | null;
-  is_correct: boolean | null;
+  actual_ret_1d?: number | null;
+  actual_ret_5d?: number | null;
   actual_ret_10d: number | null;
+  actual_ret_20d?: number | null;
+  actual_max_up_20d?: number | null;
+  actual_max_dd_20d?: number | null;
+  is_correct: boolean | null;
+  error_category?: string | null;
+  rule_signal_strength?: string | null;
 }
 
 export interface Bar {

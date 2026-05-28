@@ -506,7 +506,10 @@ async def analysis_history(symbol: str) -> JSONResponse:
         SELECT
             id, judgment_date, direction, confidence,
             composite_score, technical_score, fundamental_score,
-            flow_score, sentiment_score, is_correct, actual_ret_10d
+            flow_score, sentiment_score,
+            actual_ret_1d, actual_ret_5d, actual_ret_10d, actual_ret_20d,
+            actual_max_up_20d, actual_max_dd_20d,
+            is_correct, error_category, rule_signal_strength
         FROM judgments
         WHERE symbol = $1
         ORDER BY judgment_date DESC

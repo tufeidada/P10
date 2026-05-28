@@ -57,7 +57,7 @@ export default function JudgmentTimeline({ judgments, loading }: JudgmentTimelin
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-border">
-              {['日期', '方向', '综合', '置信度', '10日收益', '结果'].map(h => (
+              {['日期', '方向', '综合', '置信度', 'T+5', 'T+10', '结果'].map(h => (
                 <th
                   key={h}
                   className="text-text-muted font-mono text-left py-1.5 pr-3"
@@ -70,8 +70,12 @@ export default function JudgmentTimeline({ judgments, loading }: JudgmentTimelin
           </thead>
           <tbody>
             {judgments.map(j => {
+              const ret5d = j.actual_ret_5d ?? null;
               const ret10d = j.actual_ret_10d;
-              const retColor = ret10d == null ? '#8b949e' : ret10d > 0 ? '#00d4aa' : '#f85149';
+              const colorOf = (v: number | null) =>
+                v == null ? '#8b949e' : v > 0 ? '#00d4aa' : '#f85149';
+              const fmt = (v: number | null) =>
+                v != null ? `${v >= 0 ? '+' : ''}${(v * 100).toFixed(2)}%` : '--';
 
               return (
                 <tr key={j.id} className="border-b border-border/30 hover:bg-elevated/40 transition-colors">
@@ -98,12 +102,16 @@ export default function JudgmentTimeline({ judgments, loading }: JudgmentTimelin
                       {(j.confidence * 100).toFixed(0)}%
                     </span>
                   </td>
-                  <td className="font-mono py-1.5 pr-3" style={{ fontSize: '11px', color: retColor }}>
-                    {ret10d != null
-                      ? `${ret10d >= 0 ? '+' : ''}${(ret10d * 100).toFixed(2)}%`
-                      : '--'}
+                  <td className="font-mono py-1.5 pr-3" style={{ fontSize: '11px', color: colorOf(ret5d) }}>
+                    {fmt(ret5d)}
                   </td>
-                  <td className="py-1.5">
+                  <td className="font-mono py-1.5 pr-3" style={{ fontSize: '11px', color: colorOf(ret10d) }}>
+                    {fmt(ret10d)}
+                  </td>
+                  <td
+                    className="py-1.5"
+                    title={j.error_category ?? undefined}
+                  >
                     <ResultIcon isCorrect={j.is_correct} />
                   </td>
                 </tr>
