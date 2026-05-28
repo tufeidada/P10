@@ -760,6 +760,14 @@ class CompositeAnalyzer:
         except Exception as e:
             logger.warning("wiki_update_error", symbol=symbol, error=str(e))
 
+        # effective_weights：实际进入加权公式的权重（has_social=False 时已按比例重分配）
+        # 与 weights（regime 配置的基础权重）一起存，方便 API 层做因子贡献分解 (A1)。
+        effective_weights = {
+            "technical": w_tech,
+            "fundamental": w_fund,
+            "flow": w_flow,
+            "sentiment": w_sent,
+        }
         signal_sources = {
             "technical": tech_detail,
             "fundamental": fund_detail,
@@ -767,6 +775,8 @@ class CompositeAnalyzer:
             "sentiment": sent_detail,
             "regime_mode": regime_mode,
             "weights": weights,
+            "effective_weights": effective_weights,
+            "has_social": has_social,
             "rule_signal_strength": rule_signal_strength,
             "llm_direction": llm_direction,
             "llm_signal_strength": llm_signal_strength,

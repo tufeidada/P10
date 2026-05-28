@@ -135,6 +135,118 @@ def _yesterday() -> date_cls:
 
 
 # ---------------------------------------------------------------------------
+# Helper: factor contribution decomposition (A1)
+# ---------------------------------------------------------------------------
+
+_DIM_TO_SCORE_FIELD = {
+    "technical":   "technical_score",
+    "fundamental": "fundamental_score",
+    "flow":        "flow_score",
+    "sentiment":   "sentiment_score",
+}
+
+# Fallback weights if neither signal_sources nor regime_at_time carries them
+_DEFAULT_WEIGHTS = {
+    "technical": 0.30,
+    "fundamental": 0.35,
+    "flow": 0.20,
+    "sentiment": 0.15,
+}
+
+
+def _resolve_weights(row: dict[str, Any]) -> tuple[dict[str, float], str]:
+    """Pick the most authoritative weight set available on a judgment row.
+
+    Priority:
+      1. signal_sources.effective_weights  (post-2026-05-26 redistribution-aware)
+      2. signal_sources.weights            (regime config base weights)
+      3. regime_at_time.dimension_weights  (legacy fallback)
+      4. _DEFAULT_WEIGHTS
+
+    Returns:
+        (weights, source_label) — source_label identifies which path was taken.
+    """
+    ss = row.get("signal_sources") or {}
+    if isinstance(ss, dict):
+        eff = ss.get("effective_weights")
+        if isinstance(eff, dict) and eff:
+            return {k: float(v) for k, v in eff.items()}, "effective_weights"
+        base = ss.get("weights")
+        if isinstance(base, dict) and base:
+            return {k: float(v) for k, v in base.items()}, "signal_sources.weights"
+    rat = row.get("regime_at_time") or {}
+    if isinstance(rat, dict):
+        dw = rat.get("dimension_weights")
+        if isinstance(dw, str):
+            try:
+                dw = json.loads(dw)
+            except json.JSONDecodeError:
+                dw = None
+        if isinstance(dw, dict) and dw:
+            return {k: float(v) for k, v in dw.items()}, "regime_at_time"
+    return dict(_DEFAULT_WEIGHTS), "fallback_default"
+
+
+def _compute_factor_contributions(row: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Decompose composite_score into per-dimension contributions.
+
+    Formula:
+        composite ≈ baseline_50 + Σ_i (score_i - 50) * weight_i
+
+    Each factor's "contribution" is its delta from neutral (50) times its
+    effective weight, so positive contributions push composite > 50 and
+    negative contributions pull it below.
+
+    The residual (composite - baseline - Σ contributions) is also returned;
+    a non-trivial residual indicates the stored weights don't exactly match
+    the formula that produced the composite score (e.g. one of the score
+    fields was NULL and replaced with NEUTRAL_SCORE=50 at compute time, or
+    has_social redistribution wasn't captured for a legacy judgment).
+
+    Returns:
+        Dict with baseline/factors/composite_stored/composite_recomputed/
+        residual/weights_source, or None if row is missing required fields.
+    """
+    if row is None:
+        return None
+    composite = row.get("composite_score")
+    if composite is None:
+        return None
+    composite = float(composite)
+
+    weights, source = _resolve_weights(row)
+    baseline = 50.0
+
+    factors: dict[str, dict[str, float]] = {}
+    contribs_sum = 0.0
+    for dim, score_field in _DIM_TO_SCORE_FIELD.items():
+        raw_score = row.get(score_field)
+        # Match composite.py runtime behavior: NULL → 50 (NEUTRAL)
+        score = float(raw_score) if raw_score is not None else 50.0
+        w = float(weights.get(dim, 0.0))
+        contrib = (score - 50.0) * w
+        factors[dim] = {
+            "score": round(score, 2),
+            "weight": round(w, 4),
+            "contribution": round(contrib, 3),
+            "score_missing": raw_score is None,
+        }
+        contribs_sum += contrib
+
+    composite_recomputed = baseline + contribs_sum
+    residual = composite - composite_recomputed
+
+    return {
+        "baseline": baseline,
+        "factors": factors,
+        "composite_stored": round(composite, 2),
+        "composite_recomputed": round(composite_recomputed, 3),
+        "residual": round(residual, 3),
+        "weights_source": source,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Helper: data freshness check
 # ---------------------------------------------------------------------------
 
@@ -331,7 +443,51 @@ async def analysis_latest(symbol: str) -> JSONResponse:
     if row is None:
         raise HTTPException(status_code=404, detail=f"No judgment found for {symbol}")
 
-    return JSONResponse(content=to_json(row))
+    content = to_json(row)
+    if content:
+        content["factor_contributions"] = _compute_factor_contributions(content)
+    return JSONResponse(content=content)
+
+
+@app.get("/api/analysis/{symbol}/factor_contribution")
+async def analysis_factor_contribution(symbol: str) -> JSONResponse:
+    """Standalone factor-contribution breakdown for the latest judgment.
+
+    Lighter-weight than /api/analysis/{symbol} — only returns the decomposition
+    fields, useful for the frontend's waterfall chart that doesn't need the
+    full judgment payload.
+    """
+    from db.connection import db_query_one
+
+    row = await db_query_one(
+        """
+        SELECT
+            symbol, market, judgment_date,
+            technical_score, fundamental_score, flow_score, sentiment_score,
+            composite_score, direction, confidence,
+            signal_sources, regime_at_time, rule_signal_strength
+        FROM judgments
+        WHERE symbol = $1
+        ORDER BY judgment_date DESC
+        LIMIT 1
+        """,
+        symbol.upper(),
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"No judgment found for {symbol}")
+
+    content = to_json(row) or {}
+    decomp = _compute_factor_contributions(content)
+    return JSONResponse(content={
+        "symbol": content.get("symbol"),
+        "market": content.get("market"),
+        "judgment_date": content.get("judgment_date"),
+        "composite_score": content.get("composite_score"),
+        "direction": content.get("direction"),
+        "confidence": content.get("confidence"),
+        "rule_signal_strength": content.get("rule_signal_strength"),
+        "decomposition": decomp,
+    })
 
 
 @app.get("/api/analysis/{symbol}/history")

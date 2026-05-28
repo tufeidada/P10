@@ -13,6 +13,7 @@ import { useApi } from '../hooks/useApi';
 import type { JudgmentDetail, JudgmentHistory } from '../types';
 import RadarChartComponent from './RadarChartComponent';
 import JudgmentTimeline from './JudgmentTimeline';
+import FactorWaterfall from './FactorWaterfall';
 
 interface StockDetailProps {
   symbol: string;
@@ -475,6 +476,9 @@ export default function StockDetail({ symbol, onBack }: StockDetailProps) {
               暂无分析数据
             </div>
           )}
+
+          {/* Factor contribution waterfall (A1) */}
+          {judgment && <FactorWaterfall data={judgment.factor_contributions} />}
 
           {/* Dual signal */}
           {judgment && <DualSignalCard judgment={judgment} />}

@@ -40,6 +40,27 @@ export interface StockSummary {
   latest_bar_date: string | null;
 }
 
+export interface FactorBreakdown {
+  score: number;
+  weight: number;
+  contribution: number;
+  score_missing: boolean;
+}
+
+export interface FactorContributions {
+  baseline: number;
+  factors: {
+    technical: FactorBreakdown;
+    fundamental: FactorBreakdown;
+    flow: FactorBreakdown;
+    sentiment: FactorBreakdown;
+  };
+  composite_stored: number;
+  composite_recomputed: number;
+  residual: number;
+  weights_source: string;
+}
+
 export interface JudgmentDetail {
   id: number;
   symbol: string;
@@ -68,6 +89,7 @@ export interface JudgmentDetail {
   llm_extra_advice: string | null;
   llm_vote_consensus: number | null;
   llm_vote_total_calls: number | null;
+  factor_contributions?: FactorContributions | null;
 }
 
 export interface JudgmentHistory {
