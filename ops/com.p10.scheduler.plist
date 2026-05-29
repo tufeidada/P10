@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  P10 Scheduler 看护 plist：scheduler 进程死掉后 30 秒内自动重启。
+
+  根因记录：2026-05-27 13:00 BJT 之后 scheduler PID 56716 突然死亡（无崩溃 log），
+  推测是 macOS 系统休眠 / Docker daemon 重启 / OOM。nohup 不会自动拉起，导致
+  CN 链路全天空跑。launchd 的 KeepAlive=true 解决此问题。
+
+  安装：
+    cp ops/com.p10.scheduler.plist ~/Library/LaunchAgents/
+    launchctl load -w ~/Library/LaunchAgents/com.p10.scheduler.plist
+    # 确认在跑
+    launchctl list | grep p10
+
+  卸载：
+    launchctl unload ~/Library/LaunchAgents/com.p10.scheduler.plist
+    rm ~/Library/LaunchAgents/com.p10.scheduler.plist
+
+  调试：
+    tail -f logs/scheduler.log
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.p10.scheduler</string>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-c</string>
+    <string>cd "/Users/yangxuan/PycharmProjects/P10-AlphaRadar " &amp;&amp; set -a &amp;&amp; source .env &amp;&amp; set +a &amp;&amp; exec /Users/yangxuan/miniconda3/bin/python scripts/start_scheduler.py</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/yangxuan/PycharmProjects/P10-AlphaRadar </string>
+
+  <key>StandardOutPath</key>
+  <string>/Users/yangxuan/PycharmProjects/P10-AlphaRadar /logs/scheduler.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/yangxuan/PycharmProjects/P10-AlphaRadar /logs/scheduler.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/yangxuan/miniconda3/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>

@@ -221,6 +221,18 @@ async def _today_data_exists(table: str, date_col: str, market: str | None = Non
     return latest is not None and latest >= today
 
 
+async def _latest_market_bars_date(market: str):
+    """返回某市场 market_bars_daily 中最新的 trade_date（date 或 None）。
+
+    用于 features 和 regime 这类下游 job 选择目标日期——避免用 date.today()，
+    因为 BJT 与 US 时区错位 / 周末 / 节假日时会跳过有效的最新交易日。
+    """
+    from db.connection import db_query_val
+    return await db_query_val(
+        "SELECT MAX(trade_date) FROM market_bars_daily WHERE market = $1", market
+    )
+
+
 # ============================================================
 # 任务函数
 # ============================================================
@@ -873,31 +885,47 @@ async def task_backfill_missing_bars() -> None:
 
 
 async def _update_features_daily_cn() -> None:
-    """CN features 增量更新核心逻辑。"""
-    from datetime import date as _date
+    """CN features 增量更新核心逻辑。
+
+    目标日 = max(market_bars_daily.trade_date) for CN, 不是 date.today()，
+    因为 BJT 时区漂移或节假日时会让 today() 没数据。如果 features 已经覆盖
+    bars 的最新日期，则跳过（idempotent）。
+    """
     from data.pipeline.feature_compute import FeatureComputer
     from db.universe import get_active_symbols
     from db.feature_log import log_feature_results, get_degraded_symbols
+    from db.connection import db_query_val
 
-    today = _date.today()
-
-    # 依赖检查：今日 CN bars 是否已拉取
-    if not await _today_data_exists("market_bars_daily", "trade_date", "CN"):
-        logger.warning("features_cn_skip", reason="market_bars not ready for today")
+    target_date = await _latest_market_bars_date("CN")
+    if target_date is None:
+        logger.warning("features_cn_skip", reason="no market_bars data at all")
         from db.job_log import log_job
         await log_job("update_features_daily_cn", "skipped",
-                      error_message="market_bars_daily CN not ready")
+                      error_message="market_bars_daily CN empty")
+        return
+
+    # 幂等：features 已覆盖目标日则跳过
+    features_max = await db_query_val(
+        "SELECT MAX(trade_date) FROM features_daily "
+        "WHERE symbol IN (SELECT symbol FROM stock_universe WHERE active=TRUE AND market='CN')"
+    )
+    if features_max is not None and features_max >= target_date:
+        logger.info("features_cn_already_current",
+                    target_date=str(target_date), features_max=str(features_max))
+        from db.job_log import log_job
+        await log_job("update_features_daily_cn", "skipped",
+                      error_message=f"features already at {features_max}")
         return
 
     symbols = await get_active_symbols("CN")
     computer = FeatureComputer()
-    results = await computer.compute_for_symbols(symbols, "CN", today)
+    results = await computer.compute_for_symbols(symbols, "CN", target_date)
 
     errors = {s: "compute_error" for s, ok in results.items() if not ok}
-    await log_feature_results(today, "CN", results, errors)
+    await log_feature_results(target_date, "CN", results, errors)
 
     # 连续失败检测
-    degraded = await get_degraded_symbols("CN", today)
+    degraded = await get_degraded_symbols("CN", target_date)
     if degraded:
         from bot.telegram_bot import TelegramPusher
         await TelegramPusher().send(
@@ -905,7 +933,8 @@ async def _update_features_daily_cn() -> None:
         )
 
     failed = sum(1 for ok in results.values() if not ok)
-    logger.info("features_cn_done", total=len(results), failed=failed)
+    logger.info("features_cn_done", target_date=str(target_date),
+                total=len(results), failed=failed)
     if failed / max(len(results), 1) > 0.2:
         raise RuntimeError(f"features_cn 失败率过高: {failed}/{len(results)}")
 
@@ -916,29 +945,45 @@ async def task_update_features_daily_cn() -> None:
 
 
 async def _update_features_daily_us() -> None:
-    """US features 增量更新核心逻辑。"""
-    from datetime import date as _date
+    """US features 增量更新核心逻辑。
+
+    目标日 = max(market_bars_daily.trade_date) for US, 见 _update_features_daily_cn
+    的同名注释——US 链路 06:30 BJT 跑时 today()=BJT 日历日，US bars 已经是 yesterday EDT
+    所以原逻辑总是跳过。
+    """
     from data.pipeline.feature_compute import FeatureComputer
     from db.universe import get_active_symbols
     from db.feature_log import log_feature_results, get_degraded_symbols
+    from db.connection import db_query_val
 
-    today = _date.today()
-
-    if not await _today_data_exists("market_bars_daily", "trade_date", "US"):
-        logger.warning("features_us_skip", reason="market_bars not ready for today")
+    target_date = await _latest_market_bars_date("US")
+    if target_date is None:
+        logger.warning("features_us_skip", reason="no market_bars data at all")
         from db.job_log import log_job
         await log_job("update_features_daily_us", "skipped",
-                      error_message="market_bars_daily US not ready")
+                      error_message="market_bars_daily US empty")
+        return
+
+    features_max = await db_query_val(
+        "SELECT MAX(trade_date) FROM features_daily "
+        "WHERE symbol IN (SELECT symbol FROM stock_universe WHERE active=TRUE AND market='US')"
+    )
+    if features_max is not None and features_max >= target_date:
+        logger.info("features_us_already_current",
+                    target_date=str(target_date), features_max=str(features_max))
+        from db.job_log import log_job
+        await log_job("update_features_daily_us", "skipped",
+                      error_message=f"features already at {features_max}")
         return
 
     symbols = await get_active_symbols("US")
     computer = FeatureComputer()
-    results = await computer.compute_for_symbols(symbols, "US", today)
+    results = await computer.compute_for_symbols(symbols, "US", target_date)
 
     errors = {s: "compute_error" for s, ok in results.items() if not ok}
-    await log_feature_results(today, "US", results, errors)
+    await log_feature_results(target_date, "US", results, errors)
 
-    degraded = await get_degraded_symbols("US", today)
+    degraded = await get_degraded_symbols("US", target_date)
     if degraded:
         from bot.telegram_bot import TelegramPusher
         await TelegramPusher().send(
@@ -946,7 +991,8 @@ async def _update_features_daily_us() -> None:
         )
 
     failed = sum(1 for ok in results.values() if not ok)
-    logger.info("features_us_done", total=len(results), failed=failed)
+    logger.info("features_us_done", target_date=str(target_date),
+                total=len(results), failed=failed)
 
 
 async def task_update_features_daily_us() -> None:
@@ -955,19 +1001,20 @@ async def task_update_features_daily_us() -> None:
 
 
 async def _detect_regime_cn() -> None:
-    """CN regime 检测核心逻辑。"""
+    """CN regime 检测核心逻辑。目标日跟随 market_bars MAX。"""
     from core.regime.detector import detect_regime
 
-    # 依赖检查：今日 CN features 是否已计算
-    if not await _today_data_exists("features_daily", "trade_date"):
-        logger.warning("regime_cn_skip", reason="features_daily not ready for today")
+    target_date = await _latest_market_bars_date("CN")
+    if target_date is None:
+        logger.warning("regime_cn_skip", reason="no market_bars data at all")
         from db.job_log import log_job
         await log_job("detect_regime_cn", "skipped",
-                      error_message="features_daily not ready")
+                      error_message="market_bars_daily CN empty")
         return
 
-    result = await detect_regime(market="CN")
-    logger.info("regime_cn_done", mode=result.regime_mode, trend=result.trend_score)
+    result = await detect_regime(market="CN", trade_date=target_date)
+    logger.info("regime_cn_done", target_date=str(target_date),
+                mode=result.regime_mode, trend=result.trend_score)
 
 
 async def task_detect_regime_cn() -> None:
@@ -976,10 +1023,19 @@ async def task_detect_regime_cn() -> None:
 
 
 async def _detect_regime_us() -> None:
-    """US regime 检测核心逻辑。"""
+    """US regime 检测核心逻辑。目标日跟随 market_bars MAX。"""
     from core.regime.detector import detect_regime
-    result = await detect_regime(market="US")
-    logger.info("regime_us_done", mode=result.regime_mode)
+
+    target_date = await _latest_market_bars_date("US")
+    if target_date is None:
+        logger.warning("regime_us_skip", reason="no market_bars data at all")
+        from db.job_log import log_job
+        await log_job("detect_regime_us", "skipped",
+                      error_message="market_bars_daily US empty")
+        return
+
+    result = await detect_regime(market="US", trade_date=target_date)
+    logger.info("regime_us_done", target_date=str(target_date), mode=result.regime_mode)
 
 
 async def task_detect_regime_us() -> None:
